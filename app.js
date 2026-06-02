@@ -10,6 +10,7 @@ const ADMIN_TOKEN_STORAGE_KEY = "ticket-board-admin-token";
 
 let selectedTicketId = null;
 let usingRemoteApi = false;
+let adminLocked = false;
 
 const initialState = () => ({
   businessDate: todayKey(),
@@ -115,6 +116,12 @@ async function apiRequest(path, options = {}, retryAuth = true) {
     }
   }
 
+  if (response.status === 401) {
+    localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+    setAdminLocked(true, "管理用パスコードが違います。");
+    throw new Error("管理用パスコードが違います。");
+  }
+
   if (response.status === 503 && body.error === "ADMIN_TOKEN is required") {
     throw new Error("Vercelの環境変数 ADMIN_TOKEN が未設定です。");
   }
@@ -141,7 +148,35 @@ async function syncFromApi() {
     nextCardNumber: settings.nextCardNumber,
     nextActualNumber: tickets.reduce((max, ticket) => Math.max(max, ticket.actualNumber), 0) + 1,
   };
+  setAdminLocked(false);
   saveLocalState();
+}
+
+function setAdminLocked(locked, message = "") {
+  adminLocked = locked;
+  [
+    elements.issueButton,
+    elements.skipCardButton,
+    elements.resetButton,
+    elements.confirmResetButton,
+    elements.cardCountInput,
+    elements.initialPaceInput,
+  ].forEach((element) => {
+    if (element) element.disabled = locked;
+  });
+
+  const submitButton = elements.settingsForm?.querySelector("button[type='submit']");
+  if (submitButton) submitButton.disabled = locked;
+
+  if (locked) {
+    selectedTicketId = null;
+    elements.actionPanel.innerHTML = `
+      <div class="panel-empty">
+        <strong>管理画面をロック中</strong>
+        <span>${message || "管理用パスコードを確認してください。"}</span>
+      </div>
+    `;
+  }
 }
 
 function fromDbTicket(ticket) {
@@ -605,6 +640,16 @@ function selectTicket(id) {
 }
 
 function renderActionPanel() {
+  if (adminLocked) {
+    elements.actionPanel.innerHTML = `
+      <div class="panel-empty">
+        <strong>管理画面をロック中</strong>
+        <span>管理用パスコードが正しく入力されるまで操作できません。</span>
+      </div>
+    `;
+    return;
+  }
+
   const ticket = findTicket(selectedTicketId);
   if (!ticket || !["waiting", "no_show"].includes(ticket.status)) {
     elements.actionPanel.innerHTML = `
@@ -681,6 +726,11 @@ function renderSettingsForm() {
 
 async function saveSettings(event) {
   event.preventDefault();
+  if (adminLocked) {
+    setNotice("管理用パスコードが正しく入力されるまで操作できません。", "warning");
+    return;
+  }
+
   const cardCount = Number(elements.cardCountInput.value);
   const bootstrapInterval = Number(elements.initialPaceInput.value);
 
@@ -714,16 +764,17 @@ async function saveSettings(event) {
 async function init() {
   render();
   if (canUseRemoteApi()) {
+    usingRemoteApi = true;
     try {
       await syncFromApi();
-      usingRemoteApi = true;
       setNotice("API接続中です。操作内容はSupabaseへ保存されます。");
-    } catch {
-      usingRemoteApi = false;
-      setNotice("APIに接続できないため、この端末内の保存で動作しています。", "warning");
+    } catch (error) {
+      setAdminLocked(true, error.message);
+      setNotice(`${error.message} 正しい管理用パスコードを入力するまで操作できません。`, "warning");
     }
   }
   render();
+  if (adminLocked) setAdminLocked(true);
 }
 
 elements.issueButton.addEventListener("click", () => issueTicket().catch((error) => setNotice(error.message, "warning")));
