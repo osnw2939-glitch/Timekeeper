@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>整理券 進行状況</title>
+    <link rel="stylesheet" href="./public.css" />
+  </head>
+  <body>
+    <main class="public-page">
+      <section class="hero">
+        <span>現在ご案内中の番号</span>
+        <strong id="currentNumber">--</strong>
+        <p id="message">番号が近づいたら受付へお越しください。</p>
+      </section>
+
+      <section class="status-grid">
+        <article>
+          <span>待機中</span>
+          <strong id="waitingCount">--</strong>
+        </article>
+        <article>
+          <span>最後尾の目安</span>
+          <strong id="tailWait">--</strong>
+        </article>
+        <article>
+          <span>目安ペース</span>
+          <strong id="averagePace">--</strong>
+        </article>
+      </section>
+
+      <section class="notice">
+        <p>番号を過ぎた場合はスタッフへお声がけください。</p>
+        <small id="updatedAt">更新待ち</small>
+      </section>
+    </main>
+
+    <script src="./public.js"></script>
+  </body>
+</html>

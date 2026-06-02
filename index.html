@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>整理券管理</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand-mark" aria-label="店舗ロゴ">L</div>
+        <nav class="side-nav" aria-label="管理メニュー">
+          <button class="side-link active" data-nav="waiting" type="button">
+            <span class="nav-icon">□</span>
+            <span>整理券管理</span>
+          </button>
+          <button class="side-link" data-nav="noshow" type="button">
+            <span class="nav-icon">○</span>
+            <span>不在者</span>
+          </button>
+          <button class="side-link muted" type="button">
+            <span class="nav-icon">◇</span>
+            <span>統計・分析</span>
+          </button>
+          <button class="side-link" data-nav="settings" type="button">
+            <span class="nav-icon">◎</span>
+            <span>設定</span>
+          </button>
+        </nav>
+        <div class="staff-chip">
+          <span>人</span>
+          <strong>スタッフ</strong>
+        </div>
+      </aside>
+
+      <main class="dashboard">
+        <header class="page-header">
+          <div>
+            <h1>整理券管理</h1>
+            <p>再来店時刻をざっくり案内する整理券</p>
+          </div>
+          <div class="date-pill" id="todayLabel"></div>
+        </header>
+
+        <section class="kpi-panel">
+          <button class="issue-card" id="issueButton" type="button">
+            <span class="card-kicker">発券</span>
+            <div class="issue-numbers">
+              <div>
+                <small>実番</small>
+                <strong id="nextActualLabel">1</strong>
+              </div>
+              <div class="divider"></div>
+              <div>
+                <small>カード</small>
+                <strong id="nextCardLabel">1</strong>
+              </div>
+            </div>
+          </button>
+
+          <article class="kpi-card wide">
+            <span class="kpi-icon">○</span>
+            <span>最後尾の目安時間</span>
+            <strong id="tailWaitLabel">約0分</strong>
+            <small id="tailReturnLabel">すぐ案内可能</small>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-icon">○</span>
+            <span>不在者タブ</span>
+            <strong id="noShowCountLabel">0件</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-icon">□</span>
+            <span>待機中の組数</span>
+            <strong id="waitingCountLabel">0組</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-icon">○</span>
+            <span>平均進行ペース</span>
+            <strong id="averageIntervalLabel">初期 1.0分/組</strong>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-icon">□</span>
+            <span>本日発券</span>
+            <strong id="issuedCountLabel">0枚</strong>
+          </article>
+        </section>
+
+        <section class="notice-card" id="lastIssuedPanel">
+          <div class="notice-icon">i</div>
+          <div>
+            <span>ひとつ前のご案内</span>
+            <strong>発券すると、お客さまへ伝える戻り時刻が表示されます。</strong>
+          </div>
+        </section>
+
+        <section class="content-card" id="contentCard">
+          <div class="tabs">
+            <button class="tab-button active" data-view="waiting" type="button">待機番号</button>
+            <button class="tab-button" data-view="noshow" type="button">不在者</button>
+            <button class="tab-button" data-view="settings" type="button">設定</button>
+          </div>
+
+          <div class="work-area">
+            <div class="table-pane">
+              <section class="view active" id="waitingView">
+                <table class="ticket-table">
+                  <thead>
+                    <tr>
+                      <th>順番</th>
+                      <th>カード番号</th>
+                      <th>目安の案内時刻</th>
+                      <th>ステータス</th>
+                      <th>経過時間</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="waitingTableBody"></tbody>
+                </table>
+              </section>
+
+              <section class="view" id="noShowView">
+                <table class="ticket-table">
+                  <thead>
+                    <tr>
+                      <th>順番</th>
+                      <th>カード番号</th>
+                      <th>不在登録</th>
+                      <th>ステータス</th>
+                      <th>経過時間</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="noShowTableBody"></tbody>
+                </table>
+              </section>
+            </div>
+
+            <aside class="action-panel" id="actionPanel">
+              <div class="panel-empty">
+                <strong>番号を選択</strong>
+                <span>行の「処理を選択」から操作を選べます。</span>
+              </div>
+            </aside>
+          </div>
+
+          <section class="view settings-view" id="settingsView">
+            <form class="settings-form" id="settingsForm">
+              <div class="settings-head">
+                <h2>営業設定</h2>
+                <p>当日の発券と待ち時間計算に使う基本設定です。</p>
+              </div>
+              <label class="field">
+                <span>カード総枚数</span>
+                <input id="cardCountInput" min="1" max="9999" step="1" type="number" required />
+                <small>物理カードの最大番号です。超えたら1番に戻ります。</small>
+              </label>
+              <label class="field">
+                <span>初期進行ペース</span>
+                <input id="initialPaceInput" min="0.1" max="20" step="0.1" type="number" required />
+                <small>30組が来店するまで使う、1組あたりの目安分数です。</small>
+              </label>
+              <button class="settings-submit" type="submit">設定を保存</button>
+            </form>
+          </section>
+        </section>
+
+        <div class="footer-actions">
+          <button class="skip-card-button" id="skipCardButton" type="button">カード番号を飛ばす</button>
+          <button class="reset-button" id="resetButton" type="button">営業日リセット</button>
+        </div>
+      </main>
+    </div>
+
+    <dialog id="resetDialog">
+      <form method="dialog" class="action-card">
+        <h2>営業日をリセットしますか？</h2>
+        <p>本日の発券、待機、不在、進行データを消して実番1から始めます。</p>
+        <div class="dialog-actions">
+          <button value="cancel" type="submit">キャンセル</button>
+          <button class="danger" id="confirmResetButton" value="confirm" type="submit">リセット</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
