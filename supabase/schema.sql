@@ -18,6 +18,8 @@ create table if not exists tickets (
 create index if not exists tickets_business_date_status_idx
   on tickets (business_date, status, actual_number);
 
+alter table tickets enable row level security;
+
 create table if not exists daily_settings (
   business_date date primary key,
   card_count integer not null default 300,
@@ -31,6 +33,8 @@ create table if not exists daily_settings (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table daily_settings enable row level security;
 
 create or replace function set_updated_at()
 returns trigger as $$

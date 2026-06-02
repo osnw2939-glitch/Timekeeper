@@ -719,22 +719,224 @@ dialog::backdrop {
 }
 
 @media (max-width: 1180px) {
+  .layout {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+
+  .sidebar {
+    padding: 22px 10px;
+  }
+
+  .brand-mark {
+    font-size: 34px;
+    height: 48px;
+    margin-bottom: 22px;
+    width: 48px;
+  }
+
+  .side-link {
+    gap: 6px;
+    min-height: 76px;
+    padding: 10px 6px;
+  }
+
+  .nav-icon {
+    font-size: 20px;
+  }
+
+  .side-link span:last-child,
+  .staff-chip strong {
+    font-size: 12px;
+  }
+
+  .staff-chip span {
+    height: 42px;
+    width: 42px;
+  }
+
+  .dashboard {
+    padding: 26px 24px 24px;
+  }
+
+  .page-header {
+    align-items: center;
+    margin-bottom: 22px;
+  }
+
+  .page-header h1 {
+    font-size: 32px;
+  }
+
+  .page-header p {
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  .date-pill {
+    font-size: 14px;
+    padding-top: 0;
+  }
+
   .kpi-panel {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 16px;
   }
 
   .work-area {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 300px;
   }
 
   .action-panel {
-    border-left: 0;
-    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    border-top: 0;
   }
 
   .issue-card,
   .kpi-card {
-    min-height: 170px;
+    min-height: 138px;
+    padding: 20px;
+  }
+
+  .card-kicker {
+    margin-bottom: 16px;
+  }
+
+  .issue-numbers {
+    gap: 14px;
+  }
+
+  .issue-numbers small {
+    font-size: 13px;
+  }
+
+  .issue-numbers strong {
+    font-size: 44px;
+  }
+
+  .divider {
+    height: 54px;
+  }
+
+  .kpi-card span:not(.kpi-icon) {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+
+  .kpi-icon {
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+
+  .kpi-card strong {
+    font-size: 28px;
+  }
+
+  .kpi-card small {
+    font-size: 16px;
+  }
+
+  .notice-card {
+    gap: 16px;
+    margin-bottom: 16px;
+    padding: 18px 22px;
+  }
+
+  .notice-card strong {
+    font-size: 20px;
+  }
+
+  .notice-card em {
+    display: block;
+    margin-left: 0;
+    margin-top: 4px;
+  }
+
+  .tab-button {
+    font-size: 16px;
+    min-width: 150px;
+    padding: 15px 20px;
+  }
+
+  .ticket-table th {
+    font-size: 12px;
+    padding: 16px 12px 9px;
+  }
+
+  .ticket-table td {
+    font-size: 14px;
+    padding: 12px;
+  }
+
+  .number-badge {
+    font-size: 22px;
+    height: 38px;
+    min-width: 38px;
+  }
+
+  .status-pill {
+    font-size: 12px;
+    margin-right: 8px;
+    padding: 6px 10px;
+  }
+
+  .sub-status {
+    font-size: 12px;
+  }
+
+  .row-action {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+
+  .action-panel {
+    display: block;
+    padding: 16px;
+  }
+
+  .panel-empty {
+    min-height: 120px;
+  }
+
+  .panel-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-head span,
+  .panel-head strong {
+    font-size: 14px;
+  }
+
+  .panel-head p,
+  .panel-action small {
+    font-size: 12px;
+  }
+
+  .panel-action {
+    gap: 2px 10px;
+    padding: 13px;
+  }
+
+  .panel-action-icon {
+    font-size: 18px;
+    height: 34px;
+    width: 34px;
+  }
+
+  .panel-action strong {
+    font-size: 15px;
+  }
+
+  .danger-zone {
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+
+  .settings-view {
+    padding: 24px;
+  }
+
+  .footer-actions {
+    margin-top: 14px;
   }
 }
 
