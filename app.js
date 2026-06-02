@@ -6,6 +6,7 @@ const FIRST_AFTER_OPEN_WAIT_MINUTES = 15;
 const BOOTSTRAP_ADMITTED_COUNT = 30;
 const DEFAULT_BOOTSTRAP_INTERVAL_MINUTES = 1;
 const STORAGE_KEY = "ticket-board-v5";
+const ADMIN_TOKEN_STORAGE_KEY = "ticket-board-admin-token";
 
 let selectedTicketId = null;
 let usingRemoteApi = false;
@@ -83,26 +84,51 @@ function canUseRemoteApi() {
   return window.location.protocol !== "file:";
 }
 
-async function apiRequest(path, options = {}) {
+function adminToken() {
+  return localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) || "";
+}
+
+function ensureAdminToken(message = "管理用パスコードを入力してください") {
+  if (adminToken()) return true;
+  const token = window.prompt(message);
+  if (!token) return false;
+  localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token.trim());
+  return true;
+}
+
+async function apiRequest(path, options = {}, retryAuth = true) {
+  const token = adminToken();
   const response = await fetch(path, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { "X-Admin-Token": token } : {}),
       ...(options.headers || {}),
     },
   });
   const body = await response.json().catch(() => ({}));
+
+  if (response.status === 401 && retryAuth) {
+    localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+    if (ensureAdminToken("管理用パスコードが違います。もう一度入力してください")) {
+      return apiRequest(path, options, false);
+    }
+  }
+
+  if (response.status === 503 && body.error === "ADMIN_TOKEN is required") {
+    throw new Error("Vercelの環境変数 ADMIN_TOKEN が未設定です。");
+  }
+
   if (!response.ok) throw new Error(body.error || "API request failed");
   return body;
 }
 
 async function syncFromApi() {
   if (!canUseRemoteApi()) throw new Error("file protocol");
+  if (!ensureAdminToken()) throw new Error("管理用パスコードが未入力です。");
 
-  const [ticketsResult, settingsResult] = await Promise.all([
-    apiRequest(`/api/tickets?businessDate=${state.businessDate}`),
-    apiRequest(`/api/settings?businessDate=${state.businessDate}`),
-  ]);
+  const ticketsResult = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`);
+  const settingsResult = await apiRequest(`/api/settings?businessDate=${state.businessDate}`);
   const tickets = (ticketsResult.tickets || []).map(fromDbTicket);
   const settings = fromDbSettings(settingsResult.settings);
 

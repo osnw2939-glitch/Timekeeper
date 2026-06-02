@@ -1,78 +1,65 @@
-# 店舗整理券システム v1
+# 整理券管理システム
 
-目的は、店舗前の行列を減らし、お客さんに「番号」と「おおよその再来店時刻」を伝えることです。
+店舗で配布する物理整理券カードと、おおよその再来店時刻を管理するWebアプリです。
 
-## 運用思想
+## 画面
 
-- 厳密な入退室管理ではなく、現場が迷わず使える整理券管理にする
-- 発券、来店処理、不在処理を中心にする
-- 不在者は別タブへ移動する
-- 危険操作は右側の操作パネルに分離する
-- 画面は装飾より余白と読みやすさを優先する
+- 管理画面: `/`
+- お客さま向け進行状況: `/public.html`
 
-## 待ち時間ルール
+## 基本ルール
 
 - 開店時刻は9:00
-- 9:00以前に発券した場合、最初の7組は9:00案内
+- 開店時は7組まで同時に案内可能
+- 9:00前に発券した場合、1〜7組目は9:00案内
 - 8組目は9:15ごろ案内
-- 9組目以降は1組あたり約1分ずつ加算
-- 来店処理が30組未満の間は初期ルールを使う
-- 30組来店後は直近30組の来店処理間隔から平均進行ペースを計算する
+- 9組目以降は初期進行ペースに沿って加算
+- 30組来店後は直近30組の来店処理間隔から平均ペースを計算
+- カード番号は設定枚数を超えたら1番に戻る
+- 実番は当日の通し番号として増え続ける
 
-## 番号
+## 自動更新
 
-- 実番: 当日の通し番号
-- カード番号: 物理カード番号
-- カード番号は連番で渡す
-- 設定枚数を超えたら1番に戻る
-- 来店処理でカードが回収済みになっても、次の発券は即1番に戻らない
-- 持ち帰り・紛失カードは「カード番号を飛ばす」でスキップ登録する
-- 現在の仮カード枚数は300枚
-
-## フロントエンド
-
-現在は `localStorage` で動作します。Vercelに静的配置できます。
-
-管理画面:
-
-```text
-index.html
-```
-
-客用QRページ:
-
-```text
-public.html
-```
-
-客用ページは `/api/public-status` から現在の進行状況を取得します。
+- 管理画面は自動更新しません
+- お客さま向けページは60秒ごとに更新します
+- お客さま向けページのタブが非表示の間は更新を停止します
+- 再表示されたら即時に更新します
 
 ## バックエンド
 
-Vercel Serverless Functions + Supabase REST API の雛形を追加しています。
+Vercel Serverless Functions + Supabase REST API を使います。
 
 - `api/tickets.js`
-  - `GET /api/tickets?businessDate=YYYY-MM-DD`
-  - `POST /api/tickets` with `action: issue`
-  - `POST /api/tickets` with `action: admit`
-  - `POST /api/tickets` with `action: no_show`
-  - `POST /api/tickets` with `action: cancel`
-  - `POST /api/tickets` with `action: skip_card`
-  - `POST /api/tickets` with `action: reset`
+  - 管理画面用の発券、来店、不在、取消、リセット
 - `api/settings.js`
-  - `GET /api/settings?businessDate=YYYY-MM-DD`
-  - `POST /api/settings` with `cardCount`, `initialPaceMinutes`
+  - 管理画面用の設定保存
 - `api/public-status.js`
-  - `GET /api/public-status?businessDate=YYYY-MM-DD`
+  - お客さま向け進行状況
 - `supabase/schema.sql`
-- `tickets`
-- `daily_settings`
-  - `next_card_number`
-  - `skipped_card_numbers`
+  - Supabaseテーブル定義
 
-必要な環境変数:
+## Vercel環境変数
+
+VercelのEnvironment Variablesに以下を設定してください。
 
 ```text
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
+ADMIN_TOKEN
 ```
+
+`ADMIN_TOKEN` は管理画面で入力する管理用パスコードです。推測されにくい長めの文字列にしてください。
+
+例:
+
+```text
+ADMIN_TOKEN=shop-ticket-2026-long-random-text
+```
+
+## セキュリティ
+
+- SupabaseのService Role KeyはVercel Functions側だけで使用します
+- フロントエンドにService Role Keyは出しません
+- `tickets` と `daily_settings` はRLSを有効化します
+- 管理APIの `/api/tickets` と `/api/settings` は `ADMIN_TOKEN` が必要です
+- お客さま向けの `/api/public-status` は公開APIです

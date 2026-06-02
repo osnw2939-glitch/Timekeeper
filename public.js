@@ -1,3 +1,5 @@
+const REFRESH_INTERVAL_MS = 60000;
+
 const elements = {
   currentNumber: document.querySelector("#currentNumber"),
   message: document.querySelector("#message"),
@@ -6,6 +8,9 @@ const elements = {
   averagePace: document.querySelector("#averagePace"),
   updatedAt: document.querySelector("#updatedAt"),
 };
+
+let refreshTimer = null;
+let loading = false;
 
 function formatUpdatedAt() {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -16,6 +21,9 @@ function formatUpdatedAt() {
 }
 
 async function loadStatus() {
+  if (loading) return;
+  loading = true;
+
   try {
     const response = await fetch("/api/public-status");
     if (!response.ok) throw new Error("status api failed");
@@ -36,8 +44,31 @@ async function loadStatus() {
     elements.tailWait.textContent = "--";
     elements.averagePace.textContent = "--";
     elements.updatedAt.textContent = "接続待ち";
+  } finally {
+    loading = false;
   }
 }
 
+function startAutoRefresh() {
+  if (refreshTimer || document.hidden) return;
+  refreshTimer = window.setInterval(loadStatus, REFRESH_INTERVAL_MS);
+}
+
+function stopAutoRefresh() {
+  if (!refreshTimer) return;
+  window.clearInterval(refreshTimer);
+  refreshTimer = null;
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopAutoRefresh();
+    return;
+  }
+
+  loadStatus();
+  startAutoRefresh();
+});
+
 loadStatus();
-setInterval(loadStatus, 30000);
+startAutoRefresh();

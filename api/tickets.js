@@ -1,4 +1,5 @@
 const { supabaseRequest } = require("./_supabase");
+const { requireAdmin } = require("./_auth");
 
 const DEFAULT_CARD_LIMIT = 300;
 
@@ -137,6 +138,7 @@ module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url, "http://localhost");
     const businessDate = url.searchParams.get("businessDate") || todayKey();
+    requireAdmin(req);
 
     if (req.method === "GET") {
       return json(res, 200, { tickets: await listTickets(businessDate) });
@@ -184,6 +186,6 @@ module.exports = async function handler(req, res) {
 
     return json(res, 405, { error: "Method not allowed" });
   } catch (error) {
-    return json(res, 500, { error: error.message });
+    return json(res, error.statusCode || 500, { error: error.message });
   }
 };

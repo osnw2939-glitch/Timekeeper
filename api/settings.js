@@ -1,4 +1,5 @@
 const { supabaseRequest } = require("./_supabase");
+const { requireAdmin } = require("./_auth");
 
 function todayKey(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -28,6 +29,7 @@ module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url, "http://localhost");
     const businessDate = url.searchParams.get("businessDate") || todayKey();
+    requireAdmin(req);
 
     if (req.method === "GET") {
       const settings = await supabaseRequest(`daily_settings?business_date=eq.${businessDate}`, {
@@ -74,6 +76,6 @@ module.exports = async function handler(req, res) {
 
     return json(res, 405, { error: "Method not allowed" });
   } catch (error) {
-    return json(res, 500, { error: error.message });
+    return json(res, error.statusCode || 500, { error: error.message });
   }
 };
