@@ -8,7 +8,14 @@ const OPENING_BATCH_SIZE = 7;
 const FIRST_AFTER_OPEN_WAIT_MINUTES = 15;
 
 function todayKey(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
 }
 
 function json(res, status, body) {
@@ -37,9 +44,7 @@ function averageIntervalMinutes(tickets) {
 }
 
 function openDate(base = new Date()) {
-  const date = new Date(base);
-  date.setHours(OPEN_HOUR, OPEN_MINUTE, 0, 0);
-  return date;
+  return new Date(`${todayKey(base)}T${String(OPEN_HOUR).padStart(2, "0")}:${String(OPEN_MINUTE).padStart(2, "0")}:00+09:00`);
 }
 
 function addMinutes(date, minutes) {
