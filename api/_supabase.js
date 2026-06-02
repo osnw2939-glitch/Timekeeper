@@ -7,9 +7,14 @@ function assertSupabaseEnv() {
   }
 }
 
+function supabaseRestUrl() {
+  const baseUrl = SUPABASE_URL.replace(/\/+$/, "").replace(/\/rest\/v1$/, "");
+  return `${baseUrl}/rest/v1`;
+}
+
 async function supabaseRequest(path, options = {}) {
   assertSupabaseEnv();
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const response = await fetch(`${supabaseRestUrl()}/${path}`, {
     ...options,
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
