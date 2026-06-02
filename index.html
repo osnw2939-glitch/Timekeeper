@@ -168,18 +168,18 @@
 
         <div class="footer-actions">
           <button class="skip-card-button" id="skipCardButton" type="button">カード番号を飛ばす</button>
-          <button class="reset-button" id="resetButton" type="button">営業日リセット</button>
+          <button class="reset-button" id="resetButton" type="button">未処理を締める</button>
         </div>
       </main>
     </div>
 
     <dialog id="resetDialog">
       <form method="dialog" class="action-card">
-        <h2>営業日をリセットしますか？</h2>
-        <p>本日の発券、待機、不在、進行データを消して実番1から始めます。</p>
+        <h2>未処理の番号を締めますか？</h2>
+        <p>待機中・不在の番号を取消扱いにします。発券や来店の履歴データは削除しません。</p>
         <div class="dialog-actions">
           <button value="cancel" type="submit">キャンセル</button>
-          <button class="danger" id="confirmResetButton" value="confirm" type="submit">リセット</button>
+          <button class="danger" id="confirmResetButton" value="confirm" type="submit">締める</button>
         </div>
       </form>
     </dialog>

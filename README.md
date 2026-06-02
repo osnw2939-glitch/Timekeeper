@@ -30,7 +30,7 @@
 Vercel Serverless Functions + Supabase REST API を使います。
 
 - `api/tickets.js`
-  - 管理画面用の発券、来店、不在、取消、リセット
+  - 管理画面用の発券、来店、不在、取消、未処理締め
 - `api/settings.js`
   - 管理画面用の設定保存
 - `api/public-status.js`
@@ -63,3 +63,10 @@ ADMIN_TOKEN=shop-ticket-2026-long-random-text
 - `tickets` と `daily_settings` はRLSを有効化します
 - 管理APIの `/api/tickets` と `/api/settings` は `ADMIN_TOKEN` が必要です
 - お客さま向けの `/api/public-status` は公開APIです
+
+## データ保持
+
+- `tickets` は統計分析用の履歴として残します
+- 未処理締めをしても `tickets` は削除しません
+- 未処理締めでは、待機中・不在の番号を取消扱いにして当日の表示対象から外します
+- 翌営業日は `business_date` が変わるため、実番は1から始まります

@@ -119,10 +119,18 @@ async function updateTicket(id, patch) {
 }
 
 async function resetBusinessDate(businessDate) {
-  await supabaseRequest(`tickets?business_date=eq.${businessDate}`, {
-    method: "DELETE",
-    headers: { Prefer: "return=minimal" },
-  });
+  const closedAt = new Date().toISOString();
+  await supabaseRequest(
+    `tickets?business_date=eq.${businessDate}&status=in.(waiting,no_show)`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        status: "canceled",
+        canceled_at: closedAt,
+      }),
+    },
+  );
   await getOrCreateSettings(businessDate);
   const [settings] = await supabaseRequest(`daily_settings?business_date=eq.${businessDate}`, {
     method: "PATCH",
