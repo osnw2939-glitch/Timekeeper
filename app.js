@@ -25,7 +25,7 @@ const initialState = () => ({
   lastIssuedId: null,
 });
 
-let state = loadLocalState();
+let state = canUseRemoteApi() ? initialState() : loadLocalState();
 
 const elements = {
   todayLabel: document.querySelector("#todayLabel"),
@@ -170,6 +170,10 @@ function setAdminLocked(locked, message = "") {
 
   if (locked) {
     selectedTicketId = null;
+    if (canUseRemoteApi()) {
+      state = initialState();
+      saveLocalState();
+    }
     elements.actionPanel.innerHTML = `
       <div class="panel-empty">
         <strong>管理画面をロック中</strong>
@@ -762,9 +766,10 @@ async function saveSettings(event) {
 }
 
 async function init() {
-  render();
   if (canUseRemoteApi()) {
     usingRemoteApi = true;
+    state = initialState();
+    render();
     try {
       await syncFromApi();
       setNotice("API接続中です。操作内容はSupabaseへ保存されます。");
@@ -772,6 +777,8 @@ async function init() {
       setAdminLocked(true, error.message);
       setNotice(`${error.message} 正しい管理用パスコードを入力するまで操作できません。`, "warning");
     }
+  } else {
+    render();
   }
   render();
   if (adminLocked) setAdminLocked(true);
