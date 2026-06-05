@@ -25,12 +25,17 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function averageIntervalMinutes(tickets) {
+function bootstrapIntervalMinutes(settings) {
+  const interval = Number(settings?.bootstrap_interval_minutes || BOOTSTRAP_INTERVAL_MINUTES);
+  return Number.isFinite(interval) && interval > 0 ? interval : BOOTSTRAP_INTERVAL_MINUTES;
+}
+
+function averageIntervalMinutes(tickets, settings) {
   const admitted = tickets
     .filter((ticket) => ticket.status === "admitted" && ticket.admitted_at)
     .sort((a, b) => new Date(a.admitted_at) - new Date(b.admitted_at));
 
-  if (admitted.length < BOOTSTRAP_ADMITTED_COUNT) return BOOTSTRAP_INTERVAL_MINUTES;
+  if (admitted.length < BOOTSTRAP_ADMITTED_COUNT) return bootstrapIntervalMinutes(settings);
 
   const recent = admitted.slice(-30);
   const intervals = [];
@@ -40,7 +45,7 @@ function averageIntervalMinutes(tickets) {
     const minutes = (current - previous) / 60000;
     if (minutes > 0 && minutes <= 20) intervals.push(minutes);
   }
-  if (intervals.length === 0) return BOOTSTRAP_INTERVAL_MINUTES;
+  if (intervals.length === 0) return bootstrapIntervalMinutes(settings);
   return intervals.reduce((sum, minutes) => sum + minutes, 0) / intervals.length;
 }
 
@@ -57,7 +62,7 @@ function estimateTailReturnDate(tickets, settings, now = new Date()) {
   const admittedCount = tickets.filter((ticket) => ticket.status === "admitted" && ticket.admitted_at).length;
   const position = waitingCount + 1;
   const opening = openDate(now);
-  const bootstrapInterval = Number(settings?.bootstrap_interval_minutes || BOOTSTRAP_INTERVAL_MINUTES);
+  const bootstrapInterval = bootstrapIntervalMinutes(settings);
 
   if (now < opening) {
     if (position <= OPENING_BATCH_SIZE) return opening;
@@ -100,7 +105,7 @@ module.exports = async function handler(req, res) {
       (max, ticket) => Math.max(max, ticket.actual_number),
       0,
     );
-    const average = averageIntervalMinutes(tickets);
+    const average = averageIntervalMinutes(tickets, settings);
     const tailReturnAt = estimateTailReturnDate(tickets, settings);
     const tailWaitMinutes = Math.max(0, Math.ceil((tailReturnAt.getTime() - Date.now()) / 60000));
 
