@@ -82,13 +82,13 @@ async function issueTicket(businessDate, estimatedReturnAt) {
       estimated_return_at: estimatedReturnAt || null,
     }),
   });
-  await supabaseRequest(`daily_settings?business_date=eq.${businessDate}`, {
+  const [updatedSettings] = await supabaseRequest(`daily_settings?business_date=eq.${businessDate}`, {
     method: "PATCH",
     body: JSON.stringify({
       next_card_number: normalizeCardNumber(cardNumber + 1, settings.card_count || DEFAULT_CARD_LIMIT),
     }),
   });
-  return ticket;
+  return { ticket, settings: updatedSettings };
 }
 
 async function skipCard(businessDate, cardNumber) {
@@ -155,7 +155,7 @@ module.exports = async function handler(req, res) {
     if (req.method === "POST") {
       const body = await readJson(req);
       if (body.action === "issue") {
-        return json(res, 201, { ticket: await issueTicket(businessDate, body.estimatedReturnAt) });
+        return json(res, 201, await issueTicket(businessDate, body.estimatedReturnAt));
       }
       if (body.action === "skip_card") {
         return json(res, 200, { settings: await skipCard(businessDate, Number(body.cardNumber)) });

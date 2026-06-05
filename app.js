@@ -135,8 +135,10 @@ async function syncFromApi() {
   if (!canUseRemoteApi()) throw new Error("file protocol");
   if (!ensureAdminToken()) throw new Error("管理用パスコードが未入力です。");
 
-  const ticketsResult = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`);
-  const settingsResult = await apiRequest(`/api/settings?businessDate=${state.businessDate}`);
+  const [ticketsResult, settingsResult] = await Promise.all([
+    apiRequest(`/api/tickets?businessDate=${state.businessDate}`),
+    apiRequest(`/api/settings?businessDate=${state.businessDate}`),
+  ]);
   const tickets = (ticketsResult.tickets || []).map(fromDbTicket);
   const settings = fromDbSettings(settingsResult.settings);
 
@@ -241,6 +243,31 @@ function fromDbSettings(settings) {
     nextCardNumber: settings?.next_card_number || 1,
     skippedCardNumbers: settings?.skipped_card_numbers || [],
   };
+}
+
+function recalculateNextActualNumber() {
+  state.nextActualNumber = state.tickets.reduce((max, ticket) => Math.max(max, ticket.actualNumber), 0) + 1;
+}
+
+function upsertTicketFromDb(dbTicket) {
+  const ticket = fromDbTicket(dbTicket);
+  const index = state.tickets.findIndex((item) => item.id === ticket.id);
+  if (index >= 0) {
+    state.tickets[index] = ticket;
+  } else {
+    state.tickets.push(ticket);
+  }
+  state.tickets.sort((a, b) => a.actualNumber - b.actualNumber);
+  recalculateNextActualNumber();
+  return ticket;
+}
+
+function applySettingsFromDb(dbSettings) {
+  if (!dbSettings) return;
+  const settings = fromDbSettings(dbSettings);
+  state.settings = settings;
+  state.skippedCardNumbers = settings.skippedCardNumbers;
+  state.nextCardNumber = settings.nextCardNumber;
 }
 
 function cardLimit() {
@@ -417,8 +444,9 @@ async function issueTicket() {
       method: "POST",
       body: JSON.stringify({ action: "issue", estimatedReturnAt }),
     });
-    await syncFromApi();
-    state.lastIssuedId = result.ticket?.id || null;
+    const ticket = upsertTicketFromDb(result.ticket);
+    applySettingsFromDb(result.settings);
+    state.lastIssuedId = ticket.id;
     saveLocalState();
     render();
     setActiveView("waiting");
@@ -450,12 +478,13 @@ async function issueTicket() {
 
 async function admitTicket(id) {
   if (usingRemoteApi) {
-    await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
+    const result = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
       method: "POST",
       body: JSON.stringify({ action: "admit", id }),
     });
+    upsertTicketFromDb(result.ticket);
     selectedTicketId = null;
-    await syncFromApi();
+    saveLocalState();
     render();
     return;
   }
@@ -472,12 +501,13 @@ async function admitTicket(id) {
 
 async function markNoShow(id) {
   if (usingRemoteApi) {
-    await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
+    const result = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
       method: "POST",
       body: JSON.stringify({ action: "no_show", id }),
     });
+    upsertTicketFromDb(result.ticket);
     selectedTicketId = null;
-    await syncFromApi();
+    saveLocalState();
     render();
     return;
   }
@@ -493,12 +523,13 @@ async function markNoShow(id) {
 
 async function cancelTicket(id) {
   if (usingRemoteApi) {
-    await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
+    const result = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
       method: "POST",
       body: JSON.stringify({ action: "cancel", id }),
     });
+    upsertTicketFromDb(result.ticket);
     selectedTicketId = null;
-    await syncFromApi();
+    saveLocalState();
     render();
     return;
   }
@@ -519,12 +550,19 @@ function findTicket(id) {
 
 async function resetDay() {
   if (usingRemoteApi) {
-    await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
+    const result = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
       method: "POST",
       body: JSON.stringify({ action: "reset" }),
     });
+    const canceledAt = new Date().toISOString();
+    state.tickets = state.tickets.map((ticket) =>
+      ["waiting", "no_show"].includes(ticket.status)
+        ? { ...ticket, status: "canceled", canceledAt }
+        : ticket,
+    );
+    applySettingsFromDb(result.settings);
     selectedTicketId = null;
-    await syncFromApi();
+    saveLocalState();
     render();
     return;
   }
@@ -546,11 +584,12 @@ async function skipCardNumber() {
   }
 
   if (usingRemoteApi) {
-    await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
+    const result = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
       method: "POST",
       body: JSON.stringify({ action: "skip_card", cardNumber }),
     });
-    await syncFromApi();
+    applySettingsFromDb(result.settings);
+    saveLocalState();
     setNotice(`カード${cardNumber}を発券対象から外しました。`);
     render();
     return;
@@ -790,11 +829,12 @@ async function saveSettings(event) {
   }
 
   if (usingRemoteApi) {
-    await apiRequest(`/api/settings?businessDate=${state.businessDate}`, {
+    const result = await apiRequest(`/api/settings?businessDate=${state.businessDate}`, {
       method: "POST",
       body: JSON.stringify({ cardCount, initialPaceMinutes: bootstrapInterval }),
     });
-    await syncFromApi();
+    applySettingsFromDb(result.settings);
+    saveLocalState();
   } else {
     state.settings.cardCount = cardCount;
     state.settings.bootstrapIntervalMinutes = bootstrapInterval;
