@@ -32,7 +32,7 @@ async function loadStatus() {
     elements.currentNumber.textContent = data.currentNumber ?? "--";
     elements.message.textContent = data.currentNumber
       ? `現在、実番${data.currentNumber}付近まで進んでいます。`
-      : "まだ案内は始まっていません。";
+      : "まだご案内は始まっていません。";
     elements.waitingCount.textContent = `${data.waitingCount ?? 0}組`;
     elements.tailWait.textContent = `約${data.tailWaitMinutes ?? 0}分`;
     elements.averagePace.textContent = `約${Number(data.averageIntervalMinutes ?? 1).toFixed(1)}分/組`;

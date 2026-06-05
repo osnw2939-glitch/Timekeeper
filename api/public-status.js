@@ -83,13 +83,17 @@ module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url, "http://localhost");
     const businessDate = url.searchParams.get("businessDate") || todayKey();
-    const tickets = await supabaseRequest(
-      `tickets?business_date=eq.${businessDate}&order=actual_number.asc`,
-      { method: "GET" },
-    );
-    const [settings] = await supabaseRequest(`daily_settings?business_date=eq.${businessDate}`, {
-      method: "GET",
-    });
+    const [tickets, settingsRows] = await Promise.all([
+      supabaseRequest(
+        `tickets?business_date=eq.${businessDate}&select=actual_number,status,admitted_at&order=actual_number.asc`,
+        { method: "GET" },
+      ),
+      supabaseRequest(
+        `daily_settings?business_date=eq.${businessDate}&select=bootstrap_interval_minutes`,
+        { method: "GET" },
+      ),
+    ]);
+    const [settings] = settingsRows;
     const admitted = tickets.filter((ticket) => ticket.status === "admitted");
     const waiting = tickets.filter((ticket) => ticket.status === "waiting");
     const currentNumber = admitted.reduce(
