@@ -20,6 +20,13 @@ function formatUpdatedAt() {
   }).format(new Date());
 }
 
+function formatTime(value) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 async function loadStatus() {
   if (loading) return;
   loading = true;
@@ -30,11 +37,19 @@ async function loadStatus() {
     const data = await response.json();
 
     elements.currentNumber.textContent = data.currentNumber ?? "--";
-    elements.message.textContent = data.currentNumber
-      ? `現在、整理券${data.currentNumber}番付近まで進んでいます。`
-      : "まだご案内は始まっていません。";
+    elements.message.textContent = data.isAfterClosing
+      ? "本日の受付は終了しました。"
+      : data.isBeforeOpening
+        ? "9:00開店後に順番にご案内します。"
+        : data.currentNumber
+          ? `現在、整理券${data.currentNumber}番付近まで進んでいます。`
+          : "まだご案内は始まっていません。";
     elements.waitingCount.textContent = `${data.waitingCount ?? 0}組`;
-    elements.tailWait.textContent = `約${data.tailWaitMinutes ?? 0}分`;
+    elements.tailWait.textContent = data.isAfterClosing
+      ? "受付終了"
+      : data.isBeforeOpening && data.tailReturnAt
+        ? `${formatTime(data.tailReturnAt)}ごろ`
+        : `約${data.tailWaitMinutes ?? 0}分`;
     elements.averagePace.textContent = `約${Number(data.averageIntervalMinutes ?? 1).toFixed(1)}分/組`;
     elements.updatedAt.textContent = `${formatUpdatedAt()} 更新`;
   } catch {

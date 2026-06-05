@@ -4,6 +4,8 @@ const BOOTSTRAP_ADMITTED_COUNT = 15;
 const BOOTSTRAP_INTERVAL_MINUTES = 1;
 const OPEN_HOUR = 9;
 const OPEN_MINUTE = 0;
+const CLOSE_HOUR = 17;
+const CLOSE_MINUTE = 0;
 const OPENING_BATCH_SIZE = 7;
 const FIRST_AFTER_OPEN_WAIT_MINUTES = 15;
 
@@ -51,6 +53,18 @@ function averageIntervalMinutes(tickets, settings) {
 
 function openDate(base = new Date()) {
   return new Date(`${todayKey(base)}T${String(OPEN_HOUR).padStart(2, "0")}:${String(OPEN_MINUTE).padStart(2, "0")}:00+09:00`);
+}
+
+function closeDate(base = new Date()) {
+  return new Date(`${todayKey(base)}T${String(CLOSE_HOUR).padStart(2, "0")}:${String(CLOSE_MINUTE).padStart(2, "0")}:00+09:00`);
+}
+
+function isBeforeOpening(now = new Date()) {
+  return now < openDate(now);
+}
+
+function isAfterClosing(now = new Date()) {
+  return now >= closeDate(now);
 }
 
 function addMinutes(date, minutes) {
@@ -107,10 +121,14 @@ module.exports = async function handler(req, res) {
     const average = averageIntervalMinutes(tickets, settings);
     const tailReturnAt = estimateTailReturnDate(tickets, settings);
     const tailWaitMinutes = Math.max(0, Math.ceil((tailReturnAt.getTime() - Date.now()) / 60000));
+    const beforeOpening = isBeforeOpening();
+    const afterClosing = isAfterClosing();
 
     return json(res, 200, {
       businessDate,
-      currentNumber: latestAdmitted?.card_number || null,
+      currentNumber: beforeOpening || afterClosing ? null : latestAdmitted?.card_number || null,
+      isBeforeOpening: beforeOpening,
+      isAfterClosing: afterClosing,
       waitingCount: waiting.length,
       tailWaitMinutes,
       tailReturnAt: tailReturnAt.toISOString(),

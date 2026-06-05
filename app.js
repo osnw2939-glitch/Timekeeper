@@ -1,6 +1,8 @@
 const DEFAULT_CARD_LIMIT = 300;
 const OPEN_HOUR = 9;
 const OPEN_MINUTE = 0;
+const CLOSE_HOUR = 17;
+const CLOSE_MINUTE = 0;
 const OPENING_BATCH_SIZE = 7;
 const FIRST_AFTER_OPEN_WAIT_MINUTES = 15;
 const BOOTSTRAP_ADMITTED_COUNT = 15;
@@ -59,7 +61,14 @@ const elements = {
 };
 
 function todayKey(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
 }
 
 function loadLocalState() {
@@ -279,9 +288,19 @@ function bootstrapIntervalMinutes() {
 }
 
 function openDate(base = new Date()) {
-  const date = new Date(base);
-  date.setHours(OPEN_HOUR, OPEN_MINUTE, 0, 0);
-  return date;
+  return new Date(`${todayKey(base)}T${String(OPEN_HOUR).padStart(2, "0")}:${String(OPEN_MINUTE).padStart(2, "0")}:00+09:00`);
+}
+
+function closeDate(base = new Date()) {
+  return new Date(`${todayKey(base)}T${String(CLOSE_HOUR).padStart(2, "0")}:${String(CLOSE_MINUTE).padStart(2, "0")}:00+09:00`);
+}
+
+function isBeforeOpening(now = new Date()) {
+  return now < openDate(now);
+}
+
+function isAfterClosing(now = new Date()) {
+  return now >= closeDate(now);
 }
 
 function activeTickets() {
@@ -636,7 +655,11 @@ function renderSummary() {
   }).format(new Date());
   if (elements.nextActualLabel) elements.nextActualLabel.textContent = state.nextActualNumber;
   elements.nextCardLabel.textContent = nextCard ?? "--";
-  elements.tailWaitLabel.textContent = `約${tailMinutes}分`;
+  elements.tailWaitLabel.textContent = isAfterClosing()
+    ? "受付終了"
+    : isBeforeOpening()
+      ? "開店後にご案内"
+      : `約${tailMinutes}分`;
   elements.tailReturnLabel.textContent = `${formatTime(tailReturn)}ごろ`;
   elements.noShowCountLabel.textContent = `${noShows.length}件`;
   elements.waitingCountLabel.textContent = `${waiting.length}組`;
