@@ -1,7 +1,5 @@
-const { supabaseRequest } = require("./_supabase");
+const { supabaseRequest, supabaseRpc } = require("./_supabase");
 const { requireAdmin } = require("./_auth");
-
-const DEFAULT_CARD_LIMIT = 300;
 
 function todayKey(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -45,55 +43,16 @@ async function getOrCreateSettings(businessDate) {
   return created;
 }
 
-function normalizeCardNumber(number, cardCount) {
-  return ((number - 1) % cardCount) + 1;
-}
-
-function nextCardNumber(tickets, settings) {
-  const cardCount = settings.card_count || DEFAULT_CARD_LIMIT;
-  const skipped = new Set(settings.skipped_card_numbers || []);
-  const unavailable = new Set(
-    tickets
-      .filter((ticket) => ticket.status !== "canceled" && !ticket.card_recovered_at)
-      .map((ticket) => ticket.card_number),
-  );
-  const start = settings.next_card_number || 1;
-  for (let offset = 0; offset < cardCount; offset += 1) {
-    const number = normalizeCardNumber(start + offset, cardCount);
-    if (!unavailable.has(number) && !skipped.has(number)) return number;
-  }
-  return null;
-}
-
 async function issueTicket(businessDate, estimatedReturnAt) {
-  const tickets = await listTickets(businessDate);
-  const settings = await getOrCreateSettings(businessDate);
-  const maxNumber = tickets.reduce((max, ticket) => Math.max(max, ticket.actual_number), 0);
-  const cardNumber = nextCardNumber(tickets, settings);
-  if (!cardNumber) throw new Error("No reusable card is available");
-
-  const [ticket] = await supabaseRequest("tickets", {
-    method: "POST",
-    body: JSON.stringify({
-      business_date: businessDate,
-      actual_number: maxNumber + 1,
-      card_number: cardNumber,
-      status: "waiting",
-      estimated_return_at: estimatedReturnAt || null,
-    }),
+  return supabaseRpc("issue_ticket", {
+    p_business_date: businessDate,
+    p_estimated_return_at: estimatedReturnAt || null,
   });
-  const [updatedSettings] = await supabaseRequest(`daily_settings?business_date=eq.${businessDate}`, {
-    method: "PATCH",
-    body: JSON.stringify({
-      next_card_number: normalizeCardNumber(cardNumber + 1, settings.card_count || DEFAULT_CARD_LIMIT),
-    }),
-  });
-  return { ticket, settings: updatedSettings };
 }
 
 async function skipCard(businessDate, cardNumber) {
   const settings = await getOrCreateSettings(businessDate);
-  const cardCount = settings.card_count || DEFAULT_CARD_LIMIT;
+  const cardCount = settings.card_count || 300;
   if (!Number.isInteger(cardNumber) || cardNumber < 1 || cardNumber > cardCount) {
     throw new Error(`cardNumber must be between 1 and ${cardCount}`);
   }
@@ -101,7 +60,7 @@ async function skipCard(businessDate, cardNumber) {
   skipped.add(cardNumber);
   const patch = { skipped_card_numbers: [...skipped].sort((a, b) => a - b) };
   if (settings.next_card_number === cardNumber) {
-    patch.next_card_number = normalizeCardNumber(cardNumber + 1, cardCount);
+    patch.next_card_number = ((cardNumber) % cardCount) + 1;
   }
   const [updated] = await supabaseRequest(`daily_settings?business_date=eq.${businessDate}`, {
     method: "PATCH",

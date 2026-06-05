@@ -53,3 +53,86 @@ drop trigger if exists daily_settings_set_updated_at on daily_settings;
 create trigger daily_settings_set_updated_at
 before update on daily_settings
 for each row execute procedure set_updated_at();
+
+create or replace function issue_ticket(
+  p_business_date date,
+  p_estimated_return_at timestamptz default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_settings daily_settings%rowtype;
+  v_actual_number integer;
+  v_card_number integer;
+  v_offset integer;
+  v_unavailable integer[];
+  v_ticket tickets%rowtype;
+begin
+  insert into daily_settings (business_date)
+  values (p_business_date)
+  on conflict (business_date) do nothing;
+
+  select *
+    into v_settings
+    from daily_settings
+   where business_date = p_business_date
+   for update;
+
+  select coalesce(max(actual_number), 0) + 1
+    into v_actual_number
+    from tickets
+   where business_date = p_business_date;
+
+  select coalesce(array_agg(card_number), '{}')
+    into v_unavailable
+    from tickets
+   where business_date = p_business_date
+     and status <> 'canceled'
+     and card_recovered_at is null;
+
+  for v_offset in 0..(v_settings.card_count - 1) loop
+    v_card_number := ((v_settings.next_card_number + v_offset - 1) % v_settings.card_count) + 1;
+    if not (v_card_number = any(v_unavailable))
+       and not (v_card_number = any(v_settings.skipped_card_numbers)) then
+      exit;
+    end if;
+    v_card_number := null;
+  end loop;
+
+  if v_card_number is null then
+    raise exception 'No reusable card is available';
+  end if;
+
+  insert into tickets (
+    business_date,
+    actual_number,
+    card_number,
+    status,
+    estimated_return_at
+  )
+  values (
+    p_business_date,
+    v_actual_number,
+    v_card_number,
+    'waiting',
+    p_estimated_return_at
+  )
+  returning * into v_ticket;
+
+  update daily_settings
+     set next_card_number = ((v_card_number) % v_settings.card_count) + 1
+   where business_date = p_business_date
+   returning * into v_settings;
+
+  return jsonb_build_object(
+    'ticket', to_jsonb(v_ticket),
+    'settings', to_jsonb(v_settings)
+  );
+end;
+$$;
+
+revoke execute on function issue_ticket(date, timestamptz) from public;
+grant execute on function issue_ticket(date, timestamptz) to service_role;

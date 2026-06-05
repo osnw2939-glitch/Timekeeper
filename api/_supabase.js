@@ -34,4 +34,11 @@ async function supabaseRequest(path, options = {}) {
   return body;
 }
 
-module.exports = { supabaseRequest };
+async function supabaseRpc(functionName, payload = {}) {
+  return supabaseRequest(`rpc/${functionName}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+module.exports = { supabaseRequest, supabaseRpc };
