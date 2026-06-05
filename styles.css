@@ -43,6 +43,11 @@ button {
   font: inherit;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 h1,
 h2,
 p {
@@ -182,6 +187,7 @@ p {
   color: #fff;
   min-height: 218px;
   padding: 28px 32px;
+  position: relative;
   text-align: left;
 }
 
@@ -429,6 +435,7 @@ p {
   gap: 12px;
   font-weight: 850;
   padding: 10px 14px;
+  position: relative;
 }
 
 .row-action.active {
@@ -489,6 +496,7 @@ p {
   color: #fff;
   font-weight: 900;
   padding: 14px 18px;
+  position: relative;
   width: fit-content;
 }
 
@@ -559,6 +567,7 @@ p {
   gap: 2px 14px;
   grid-template-columns: auto 1fr;
   padding: 16px;
+  position: relative;
   text-align: left;
 }
 
@@ -662,6 +671,7 @@ p {
   color: var(--green-900);
   font-weight: 900;
   padding: 12px 16px;
+  position: relative;
 }
 
 .reset-button {
@@ -671,6 +681,49 @@ p {
   color: var(--danger);
   font-weight: 900;
   padding: 12px 16px;
+  position: relative;
+}
+
+.is-loading {
+  pointer-events: none;
+}
+
+.is-loading::after {
+  animation: spin 780ms linear infinite;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  content: "";
+  height: 18px;
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: 18px;
+}
+
+.row-action.is-loading,
+.settings-submit.is-loading,
+.skip-card-button.is-loading,
+.reset-button.is-loading {
+  padding-right: 42px;
+}
+
+.panel-action.is-loading {
+  padding-right: 46px;
+}
+
+.issue-card.is-loading::after {
+  color: #fff;
+  height: 28px;
+  right: 22px;
+  top: 22px;
+  width: 28px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 dialog {

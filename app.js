@@ -11,6 +11,7 @@ const ADMIN_TOKEN_STORAGE_KEY = "ticket-board-admin-token";
 let selectedTicketId = null;
 let usingRemoteApi = false;
 let adminLocked = false;
+let operationBusy = false;
 
 const initialState = () => ({
   businessDate: todayKey(),
@@ -162,11 +163,11 @@ function setAdminLocked(locked, message = "") {
     elements.cardCountInput,
     elements.initialPaceInput,
   ].forEach((element) => {
-    if (element) element.disabled = locked;
+    if (element) element.disabled = locked || operationBusy;
   });
 
   const submitButton = elements.settingsForm?.querySelector("button[type='submit']");
-  if (submitButton) submitButton.disabled = locked;
+  if (submitButton) submitButton.disabled = locked || operationBusy;
 
   if (locked) {
     selectedTicketId = null;
@@ -180,6 +181,41 @@ function setAdminLocked(locked, message = "") {
         <span>${message || "管理用パスコードを確認してください。"}</span>
       </div>
     `;
+  }
+}
+
+function operationButtons() {
+  return [
+    elements.issueButton,
+    elements.skipCardButton,
+    elements.resetButton,
+    elements.confirmResetButton,
+    elements.settingsForm?.querySelector("button[type='submit']"),
+    ...document.querySelectorAll(".row-action, .panel-action"),
+  ].filter(Boolean);
+}
+
+function setOperationDisabled(disabled) {
+  operationButtons().forEach((button) => {
+    button.disabled = disabled || adminLocked;
+  });
+}
+
+async function runOperation(button, task) {
+  if (operationBusy || adminLocked) return;
+  operationBusy = true;
+  button?.classList.add("is-loading");
+  button?.setAttribute("aria-busy", "true");
+  setOperationDisabled(true);
+
+  try {
+    await task();
+  } finally {
+    operationBusy = false;
+    button?.classList.remove("is-loading");
+    button?.removeAttribute("aria-busy");
+    setOperationDisabled(false);
+    if (adminLocked) setAdminLocked(true);
   }
 }
 
@@ -700,9 +736,15 @@ function renderActionPanel() {
   elements.actionPanel.querySelectorAll("[data-panel-action]").forEach((button) => {
     button.addEventListener("click", () => {
       const action = button.dataset.panelAction;
-      if (action === "admit") admitTicket(ticket.id);
-      if (action === "noshow") markNoShow(ticket.id);
-      if (action === "cancel") cancelTicket(ticket.id);
+      if (action === "admit") {
+        runOperation(button, () => admitTicket(ticket.id).catch((error) => setNotice(error.message, "warning")));
+      }
+      if (action === "noshow") {
+        runOperation(button, () => markNoShow(ticket.id).catch((error) => setNotice(error.message, "warning")));
+      }
+      if (action === "cancel") {
+        runOperation(button, () => cancelTicket(ticket.id).catch((error) => setNotice(error.message, "warning")));
+      }
     });
   });
 }
@@ -784,11 +826,21 @@ async function init() {
   if (adminLocked) setAdminLocked(true);
 }
 
-elements.issueButton.addEventListener("click", () => issueTicket().catch((error) => setNotice(error.message, "warning")));
-elements.skipCardButton.addEventListener("click", () => skipCardNumber().catch((error) => setNotice(error.message, "warning")));
+elements.issueButton.addEventListener("click", () => {
+  runOperation(elements.issueButton, () => issueTicket().catch((error) => setNotice(error.message, "warning")));
+});
+elements.skipCardButton.addEventListener("click", () => {
+  runOperation(elements.skipCardButton, () => skipCardNumber().catch((error) => setNotice(error.message, "warning")));
+});
 elements.resetButton.addEventListener("click", () => elements.resetDialog.showModal());
-elements.confirmResetButton.addEventListener("click", () => resetDay().catch((error) => setNotice(error.message, "warning")));
-elements.settingsForm.addEventListener("submit", (event) => saveSettings(event).catch((error) => setNotice(error.message, "warning")));
+elements.confirmResetButton.addEventListener("click", () => {
+  runOperation(elements.confirmResetButton, () => resetDay().catch((error) => setNotice(error.message, "warning")));
+});
+elements.settingsForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const submitButton = elements.settingsForm.querySelector("button[type='submit']");
+  runOperation(submitButton, () => saveSettings(event).catch((error) => setNotice(error.message, "warning")));
+});
 elements.tabButtons.forEach((button) => {
   button.addEventListener("click", () => setActiveView(button.dataset.view));
 });
