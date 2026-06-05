@@ -90,7 +90,7 @@ module.exports = async function handler(req, res) {
     const businessDate = url.searchParams.get("businessDate") || todayKey();
     const [tickets, settingsRows] = await Promise.all([
       supabaseRequest(
-        `tickets?business_date=eq.${businessDate}&select=actual_number,status,admitted_at&order=actual_number.asc`,
+        `tickets?business_date=eq.${businessDate}&select=actual_number,card_number,status,admitted_at&order=actual_number.asc`,
         { method: "GET" },
       ),
       supabaseRequest(
@@ -101,17 +101,16 @@ module.exports = async function handler(req, res) {
     const [settings] = settingsRows;
     const admitted = tickets.filter((ticket) => ticket.status === "admitted");
     const waiting = tickets.filter((ticket) => ticket.status === "waiting");
-    const currentNumber = admitted.reduce(
-      (max, ticket) => Math.max(max, ticket.actual_number),
-      0,
-    );
+    const latestAdmitted = admitted
+      .filter((ticket) => ticket.admitted_at)
+      .sort((a, b) => new Date(b.admitted_at) - new Date(a.admitted_at))[0];
     const average = averageIntervalMinutes(tickets, settings);
     const tailReturnAt = estimateTailReturnDate(tickets, settings);
     const tailWaitMinutes = Math.max(0, Math.ceil((tailReturnAt.getTime() - Date.now()) / 60000));
 
     return json(res, 200, {
       businessDate,
-      currentNumber: currentNumber || null,
+      currentNumber: latestAdmitted?.card_number || null,
       waitingCount: waiting.length,
       tailWaitMinutes,
       tailReturnAt: tailReturnAt.toISOString(),

@@ -202,7 +202,7 @@ p {
   align-items: center;
   display: grid;
   gap: 24px;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr;
 }
 
 .issue-numbers small {

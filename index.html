@@ -48,12 +48,7 @@
             <span class="card-kicker">発券</span>
             <div class="issue-numbers">
               <div>
-                <small>実番</small>
-                <strong id="nextActualLabel">1</strong>
-              </div>
-              <div class="divider"></div>
-              <div>
-                <small>カード</small>
+                <small>次の整理券番号</small>
                 <strong id="nextCardLabel">1</strong>
               </div>
             </div>
@@ -108,8 +103,7 @@
                 <table class="ticket-table">
                   <thead>
                     <tr>
-                      <th>順番</th>
-                      <th>カード番号</th>
+                      <th>整理券番号</th>
                       <th>目安の案内時刻</th>
                       <th>ステータス</th>
                       <th>経過時間</th>
@@ -124,8 +118,7 @@
                 <table class="ticket-table">
                   <thead>
                     <tr>
-                      <th>順番</th>
-                      <th>カード番号</th>
+                      <th>整理券番号</th>
                       <th>不在登録</th>
                       <th>ステータス</th>
                       <th>経過時間</th>
@@ -167,7 +160,7 @@
         </section>
 
         <div class="footer-actions">
-          <button class="skip-card-button" id="skipCardButton" type="button">カード番号を飛ばす</button>
+          <button class="skip-card-button" id="skipCardButton" type="button">整理券番号を飛ばす</button>
           <button class="reset-button" id="resetButton" type="button">未処理を締める</button>
         </div>
       </main>
@@ -184,6 +177,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=20260605-fast-actions"></script>
+    <script src="./app.js?v=20260605-card-number-only"></script>
   </body>
 </html>

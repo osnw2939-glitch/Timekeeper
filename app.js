@@ -434,7 +434,7 @@ function returnTimeLabelForTicket(ticket) {
 }
 
 function ticketTitle(ticket) {
-  return `実番${ticket.actualNumber} / カード${ticket.cardNumber}`;
+  return `整理券${ticket.cardNumber}`;
 }
 
 async function issueTicket() {
@@ -574,12 +574,12 @@ async function resetDay() {
 }
 
 async function skipCardNumber() {
-  const value = window.prompt("飛ばすカード番号を入力してください");
+  const value = window.prompt("飛ばす整理券番号を入力してください");
   if (!value) return;
 
   const cardNumber = Number(value);
   if (!Number.isInteger(cardNumber) || cardNumber < 1 || cardNumber > cardLimit()) {
-    setNotice(`1から${cardLimit()}までのカード番号を入力してください。`, "warning");
+    setNotice(`1から${cardLimit()}までの整理券番号を入力してください。`, "warning");
     return;
   }
 
@@ -590,7 +590,7 @@ async function skipCardNumber() {
     });
     applySettingsFromDb(result.settings);
     saveLocalState();
-    setNotice(`カード${cardNumber}を発券対象から外しました。`);
+    setNotice(`整理券${cardNumber}を発券対象から外しました。`);
     render();
     return;
   }
@@ -600,7 +600,7 @@ async function skipCardNumber() {
   state.skippedCardNumbers = [...skipped].sort((a, b) => a - b);
   if (state.nextCardNumber === cardNumber) state.nextCardNumber = normalizeCardNumber(cardNumber + 1);
   saveLocalState();
-  setNotice(`カード${cardNumber}を発券対象から外しました。`);
+  setNotice(`整理券${cardNumber}を発券対象から外しました。`);
   render();
 }
 
@@ -634,7 +634,7 @@ function renderSummary() {
   elements.todayLabel.textContent = new Intl.DateTimeFormat("ja-JP", {
     dateStyle: "full",
   }).format(new Date());
-  elements.nextActualLabel.textContent = state.nextActualNumber;
+  if (elements.nextActualLabel) elements.nextActualLabel.textContent = state.nextActualNumber;
   elements.nextCardLabel.textContent = nextCard ?? "--";
   elements.tailWaitLabel.textContent = `約${tailMinutes}分`;
   elements.tailReturnLabel.textContent = `${formatTime(tailReturn)}ごろ`;
@@ -671,7 +671,7 @@ function renderTables() {
 function renderTicketRows(container, tickets, type) {
   if (tickets.length === 0) {
     const text = type === "waiting" ? "現在、待機中の番号はありません。" : "不在者はいません。";
-    container.innerHTML = `<tr><td class="empty-row" colspan="6">${text}</td></tr>`;
+    container.innerHTML = `<tr><td class="empty-row" colspan="5">${text}</td></tr>`;
     return;
   }
 
@@ -684,8 +684,7 @@ function renderTicketRows(container, tickets, type) {
 
     return `
       <tr class="${selected}">
-        <td><span class="number-badge">${ticket.actualNumber}</span></td>
-        <td><strong>カード${ticket.cardNumber}</strong></td>
+        <td><span class="number-badge">${ticket.cardNumber}</span></td>
         <td><span class="time-cell">${timeLabel}</span></td>
         <td>
           <span class="status-pill ${type}">${statusLabel}</span>
@@ -743,7 +742,7 @@ function renderActionPanel() {
   const isNoShow = ticket.status === "no_show";
   elements.actionPanel.innerHTML = `
     <div class="panel-head">
-      <span>選択中：カード${ticket.cardNumber} / 実番 ${ticket.actualNumber}</span>
+      <span>選択中：整理券${ticket.cardNumber}</span>
       <strong>${isNoShow ? "不在者の処理" : "待機番号の処理"}</strong>
       <p>押し間違いを防ぐため、主要操作は右側に分離しています。</p>
     </div>
