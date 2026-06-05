@@ -28,7 +28,7 @@ create table if not exists daily_settings (
   open_time time not null default '09:00',
   opening_batch_size integer not null default 7,
   first_after_open_wait_minutes integer not null default 15,
-  bootstrap_admitted_count integer not null default 30,
+  bootstrap_admitted_count integer not null default 15,
   bootstrap_interval_minutes numeric not null default 1,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

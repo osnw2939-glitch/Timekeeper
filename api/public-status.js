@@ -1,6 +1,6 @@
 const { supabaseRequest } = require("./_supabase");
 
-const BOOTSTRAP_ADMITTED_COUNT = 30;
+const BOOTSTRAP_ADMITTED_COUNT = 15;
 const BOOTSTRAP_INTERVAL_MINUTES = 1;
 const OPEN_HOUR = 9;
 const OPEN_MINUTE = 0;
