@@ -1,4 +1,6 @@
-const REFRESH_INTERVAL_MS = 60000;
+const OPEN_REFRESH_INTERVAL_MS = 180000;
+const BEFORE_OPEN_REFRESH_INTERVAL_MS = 300000;
+const ERROR_REFRESH_INTERVAL_MS = 300000;
 
 const elements = {
   currentNumber: document.querySelector("#currentNumber"),
@@ -27,6 +29,20 @@ function formatTime(value) {
   }).format(new Date(value));
 }
 
+function stopAutoRefresh() {
+  if (!refreshTimer) return;
+  window.clearTimeout(refreshTimer);
+  refreshTimer = null;
+}
+
+function scheduleNextRefresh(data, fallbackDelay = OPEN_REFRESH_INTERVAL_MS) {
+  stopAutoRefresh();
+  if (document.hidden || data?.isAfterClosing) return;
+
+  const delay = data?.isBeforeOpening ? BEFORE_OPEN_REFRESH_INTERVAL_MS : fallbackDelay;
+  refreshTimer = window.setTimeout(loadStatus, delay);
+}
+
 async function loadStatus() {
   if (loading) return;
   loading = true;
@@ -51,7 +67,10 @@ async function loadStatus() {
         ? `${formatTime(data.tailReturnAt)}ごろ`
         : `約${data.tailWaitMinutes ?? 0}分`;
     elements.averagePace.textContent = `約${Number(data.averageIntervalMinutes ?? 1).toFixed(1)}分/組`;
-    elements.updatedAt.textContent = `${formatUpdatedAt()} 更新`;
+    elements.updatedAt.textContent = data.isAfterClosing
+      ? `${formatUpdatedAt()} 更新・自動更新停止`
+      : `${formatUpdatedAt()} 更新`;
+    scheduleNextRefresh(data);
   } catch {
     elements.currentNumber.textContent = "--";
     elements.message.textContent = "ただいま表示準備中です。店頭スタッフへご確認ください。";
@@ -59,20 +78,10 @@ async function loadStatus() {
     elements.tailWait.textContent = "--";
     elements.averagePace.textContent = "--";
     elements.updatedAt.textContent = "接続待ち";
+    scheduleNextRefresh(null, ERROR_REFRESH_INTERVAL_MS);
   } finally {
     loading = false;
   }
-}
-
-function startAutoRefresh() {
-  if (refreshTimer || document.hidden) return;
-  refreshTimer = window.setInterval(loadStatus, REFRESH_INTERVAL_MS);
-}
-
-function stopAutoRefresh() {
-  if (!refreshTimer) return;
-  window.clearInterval(refreshTimer);
-  refreshTimer = null;
 }
 
 document.addEventListener("visibilitychange", () => {
@@ -82,8 +91,6 @@ document.addEventListener("visibilitychange", () => {
   }
 
   loadStatus();
-  startAutoRefresh();
 });
 
 loadStatus();
-startAutoRefresh();

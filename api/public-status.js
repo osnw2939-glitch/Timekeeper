@@ -23,7 +23,7 @@ function todayKey(date = new Date()) {
 function json(res, status, body) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
-  res.setHeader("Cache-Control", "public, max-age=0, s-maxage=15, stale-while-revalidate=45");
+  res.setHeader("Cache-Control", "public, max-age=0, s-maxage=120, stale-while-revalidate=300");
   res.end(JSON.stringify(body));
 }
 
@@ -102,6 +102,24 @@ module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url, "http://localhost");
     const businessDate = url.searchParams.get("businessDate") || todayKey();
+    const now = new Date();
+    const beforeOpening = isBeforeOpening(now);
+    const afterClosing = isAfterClosing(now);
+
+    if (afterClosing) {
+      return json(res, 200, {
+        businessDate,
+        currentNumber: null,
+        isBeforeOpening: false,
+        isAfterClosing: true,
+        waitingCount: 0,
+        tailWaitMinutes: 0,
+        tailReturnAt: closeDate(now).toISOString(),
+        averageIntervalMinutes: BOOTSTRAP_INTERVAL_MINUTES,
+        updatedAt: now.toISOString(),
+      });
+    }
+
     const [tickets, settingsRows] = await Promise.all([
       supabaseRequest(
         `tickets?business_date=eq.${businessDate}&select=actual_number,card_number,status,admitted_at&order=actual_number.asc`,
@@ -121,8 +139,6 @@ module.exports = async function handler(req, res) {
     const average = averageIntervalMinutes(tickets, settings);
     const tailReturnAt = estimateTailReturnDate(tickets, settings);
     const tailWaitMinutes = Math.max(0, Math.ceil((tailReturnAt.getTime() - Date.now()) / 60000));
-    const beforeOpening = isBeforeOpening();
-    const afterClosing = isAfterClosing();
 
     return json(res, 200, {
       businessDate,
