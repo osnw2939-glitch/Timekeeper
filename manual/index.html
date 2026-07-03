@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>整理券管理システム 操作マニュアル</title>
+    <style>
+      :root {
+        --green: #005034;
+        --green-soft: #e8f3ed;
+        --line: #d9e2dd;
+        --muted: #5f6f68;
+        --paper: #f8f9f7;
+        --text: #111816;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        background: var(--paper);
+        color: var(--text);
+        font-family: "Yu Gothic", "Meiryo", system-ui, sans-serif;
+        line-height: 1.75;
+        margin: 0;
+      }
+
+      main {
+        margin: 0 auto;
+        max-width: 1120px;
+        padding: 48px 28px 80px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        color: var(--green);
+        line-height: 1.35;
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 38px;
+        margin-bottom: 12px;
+      }
+
+      h2 {
+        border-bottom: 2px solid var(--line);
+        font-size: 28px;
+        margin-bottom: 18px;
+        padding-bottom: 10px;
+      }
+
+      h3 {
+        font-size: 20px;
+        margin: 26px 0 8px;
+      }
+
+      p {
+        margin: 8px 0 0;
+      }
+
+      ul,
+      ol {
+        margin: 10px 0 0;
+        padding-left: 1.4em;
+      }
+
+      li {
+        margin: 5px 0;
+      }
+
+      code {
+        background: #edf2ef;
+        border-radius: 4px;
+        padding: 2px 6px;
+      }
+
+      .cover {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        margin-bottom: 28px;
+        padding: 36px;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .section {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        margin-top: 24px;
+        padding: 28px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .callout {
+        background: var(--green-soft);
+        border: 1px solid #bad7c8;
+        border-radius: 10px;
+        margin-top: 16px;
+        padding: 16px 18px;
+      }
+
+      .warning {
+        background: #fff7ed;
+        border-color: #f1c9a3;
+      }
+
+      .danger {
+        background: #fff1f1;
+        border-color: #efb4b4;
+      }
+
+      .shot {
+        margin: 18px 0 8px;
+      }
+
+      .shot img {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        display: block;
+        max-width: 100%;
+        width: 100%;
+      }
+
+      .caption {
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 6px;
+      }
+
+      .flow {
+        counter-reset: step;
+        list-style: none;
+        padding-left: 0;
+      }
+
+      .flow li {
+        border-left: 4px solid var(--green);
+        margin: 12px 0;
+        padding: 4px 0 4px 14px;
+      }
+
+      .page-break {
+        break-before: page;
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+
+        main {
+          max-width: none;
+          padding: 0;
+        }
+
+        .section,
+        .cover {
+          border-radius: 0;
+          page-break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="cover">
+        <h1>整理券管理システム 操作マニュアル</h1>
+        <p class="lead">
+          店頭で整理券を配り、再来店の目安時間を案内するための簡易マニュアルです。
+          お客さまへ伝える番号は、すべて「整理券番号」です。
+        </p>
+        <div class="callout">
+          <strong>基本方針</strong>
+          <p>難しい操作はありません。発券して、来店した番号を選び、必要なら不在にするだけです。</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>1. 管理画面の見方</h2>
+        <p>
+          管理画面では、次に渡す整理券番号、最後尾の目安時間、不在者、待機中の組数を確認できます。
+        </p>
+        <div class="shot">
+          <img src="assets/admin-dashboard.png" alt="管理画面トップ" />
+          <p class="caption">管理画面トップ。発券ボタンと待機番号一覧を中心に使います。</p>
+        </div>
+        <div class="grid">
+          <div class="callout">
+            <strong>次の整理券番号</strong>
+            <p>次に渡す物理カードの番号です。カード総枚数を超えると1番に戻ります。</p>
+          </div>
+          <div class="callout">
+            <strong>最後尾の目安時間</strong>
+            <p>今発券した場合、お客さまへ伝えるおおよその戻り時間です。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>2. 当日の準備</h2>
+        <ol class="flow">
+          <li>iPadで管理画面を開きます。</li>
+          <li>パスワードを求められたら、管理用パスワードを入力します。</li>
+          <li>設定画面で「カード総枚数」と「初期進行ペース」を確認します。</li>
+          <li>必要があれば、設定を保存します。</li>
+        </ol>
+        <div class="callout warning">
+          <strong>開店前の表示</strong>
+          <p>
+            9:00前に発券しても、9:00開店後に案内される前提で目安時間が出ます。
+            8番目以降は9:15ごろからの案内として計算されます。
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>3. 発券する</h2>
+        <ol class="flow">
+          <li>お客さまに渡す整理券カードを用意します。</li>
+          <li>管理画面左上の「発券」を押します。</li>
+          <li>表示された整理券番号のカードを渡します。</li>
+          <li>画面に表示される目安時刻を伝えます。</li>
+        </ol>
+        <div class="callout">
+          <strong>案内例</strong>
+          <p>「整理券5番です。9:35ごろにお戻りください。」</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>4. 来店・不在・取消</h2>
+        <p>
+          待機番号一覧から対象の整理券番号を選ぶと、右側に操作ボタンが出ます。
+        </p>
+        <div class="shot">
+          <img src="assets/admin-actions.png" alt="操作パネル" />
+          <p class="caption">対象行の「処理を選択」を押すと、来店・不在・取消の操作ができます。</p>
+        </div>
+        <h3>来店として処理</h3>
+        <p>お客さまが戻ってきたら「来店として処理」を押します。待機一覧から外れ、カード回収済みになります。</p>
+        <h3>不在にする</h3>
+        <p>呼び出しても来ていない場合は「不在にする」を押します。不在者タブへ移動します。</p>
+        <h3>呼び出しを取り消す</h3>
+        <p>押し間違いなどで番号自体を取り消す場合だけ使います。通常はあまり使いません。</p>
+      </section>
+
+      <section class="section">
+        <h2>5. 不在者の対応</h2>
+        <p>
+          不在にした番号は「不在者」タブに入ります。あとから戻ってきた場合は、その番号を選んで来店処理できます。
+        </p>
+        <div class="shot">
+          <img src="assets/admin-noshow.png" alt="不在者タブ" />
+          <p class="caption">不在者タブ。戻ってきたお客さまはここから来店処理します。</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>6. 設定画面</h2>
+        <p>
+          設定では、カード総枚数と初期進行ペースを変更できます。
+        </p>
+        <div class="shot">
+          <img src="assets/admin-settings.png" alt="設定画面" />
+          <p class="caption">設定画面。基本的には営業前に確認します。</p>
+        </div>
+        <ul>
+          <li><strong>カード総枚数</strong>: 物理カードの最大番号です。300枚なら300。</li>
+          <li><strong>初期進行ペース</strong>: 15組が来店するまで使う、1組あたりの目安分数です。</li>
+        </ul>
+        <div class="callout warning">
+          <strong>営業中の設定変更は控えめに</strong>
+          <p>カード総枚数を営業中に変えると、次に出る整理券番号が分かりにくくなることがあります。</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>7. 客用ページ</h2>
+        <p>
+          お客さまはQRコードから客用ページを見ます。表示されるのは、現在案内中の整理券番号と待ち時間の目安です。
+        </p>
+        <div class="shot">
+          <img src="assets/public-status.png" alt="客用ページ" />
+          <p class="caption">客用ページ。お客さまには「ざっくり今どの辺か」を見てもらいます。</p>
+        </div>
+        <ul>
+          <li>客用ページは自動更新されます。</li>
+          <li>Supabase無料枠を守るため、更新は控えめです。</li>
+          <li>表示が数分遅れることがあります。厳密な呼び出し番号ではなく目安として案内してください。</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>8. 営業終了時</h2>
+        <ol class="flow">
+          <li>営業終了後、必要に応じて「未処理を締める」を押します。</li>
+          <li>待機中・不在の番号が締められます。</li>
+          <li>履歴データは残ります。分析用に使うため、通常は削除しません。</li>
+        </ol>
+        <div class="callout">
+          <strong>17:00以降</strong>
+          <p>客用ページは自動で「本日の受付は終了しました」の表示になります。</p>
+        </div>
+      </section>
+
+      <section class="section page-break">
+        <h2>9. 技術メモと注意点</h2>
+        <p>
+          ここからは管理担当者・保守担当者向けです。現場スタッフ全員が覚える必要はありません。
+        </p>
+
+        <h3>Supabase無料アカウントの注意点</h3>
+        <ul>
+          <li>無料枠にはリクエスト数やデータベース利用量の制限があります。</li>
+          <li>客用ページを開きっぱなしにするとAPIアクセスが増えます。現在は更新頻度をかなり抑えています。</li>
+          <li>17:00以降の客用ページは、Supabaseを読まずに受付終了を返す設計です。</li>
+          <li>テストデータを消す場合は、Supabase SQL Editorで <code>delete from tickets;</code> と <code>delete from daily_settings;</code> を実行します。</li>
+          <li>DBを作り直した場合は、<code>supabase/schema.sql</code> をSQL Editorで実行します。</li>
+        </ul>
+
+        <h3>Supabaseで詰まりやすいところ</h3>
+        <ul>
+          <li><strong>URL間違い</strong>: Vercelの <code>SUPABASE_URL</code> は <code>https://xxxx.supabase.co</code> の形です。</li>
+          <li><strong>キー間違い</strong>: Vercelの <code>SUPABASE_SERVICE_ROLE_KEY</code> はSecret keyを入れます。Publishable keyではありません。</li>
+          <li><strong>SQL未実行</strong>: 新しいSupabaseに変えたら、必ず <code>schema.sql</code> を実行します。</li>
+          <li><strong>issue_ticketがない</strong>: 発券時に関数が見つからないエラーが出る場合、SQLの最後まで実行できていない可能性があります。</li>
+          <li><strong>RLS警告</strong>: SQL Editorで警告が出ても、今回のアプリはVercel側のサーバーからSecret keyでアクセスします。</li>
+        </ul>
+
+        <h3>Vercel無料アカウントの注意点</h3>
+        <ul>
+          <li>GitHubへPushするとVercelが自動デプロイします。</li>
+          <li>環境変数を変更したら、必ずRedeployが必要です。</li>
+          <li>無料枠では、しばらくアクセスがない後の初回表示が少し遅くなることがあります。</li>
+          <li>管理画面のパスワードはVercel環境変数 <code>ADMIN_TOKEN</code> です。</li>
+          <li>Production環境に環境変数が入っているか確認してください。</li>
+        </ul>
+
+        <h3>Vercelで詰まりやすいところ</h3>
+        <ul>
+          <li><strong>ADMIN_TOKEN未設定</strong>: 管理画面に「環境変数ADMIN_TOKENが未設定」と出ます。</li>
+          <li><strong>古い環境変数のまま</strong>: 設定後にRedeployしていない可能性があります。</li>
+          <li><strong>Supabase切替後につながらない</strong>: <code>SUPABASE_URL</code> と <code>SUPABASE_SERVICE_ROLE_KEY</code> を新しいプロジェクトのものに変えてください。</li>
+          <li><strong>客用ページが少し古い</strong>: 無料枠対策でキャッシュを使っています。数分の遅れは仕様です。</li>
+        </ul>
+
+        <div class="callout danger">
+          <strong>Secret keyは絶対に公開しない</strong>
+          <p>
+            <code>sb_secret_...</code> で始まるキーはVercelのEnvironment Variablesだけに入れます。
+            GitHub、HTML、JavaScript、QRコード、印刷物には載せません。
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
