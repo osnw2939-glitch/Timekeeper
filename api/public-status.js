@@ -1,4 +1,5 @@
 const { supabaseRequest } = require("./_supabase");
+const { filterValue, requireBusinessDate } = require("./_validation");
 
 const BOOTSTRAP_ADMITTED_COUNT = 15;
 const BOOTSTRAP_INTERVAL_MINUTES = 1;
@@ -101,7 +102,8 @@ function estimateTailReturnDate(tickets, settings, now = new Date()) {
 module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url, "http://localhost");
-    const businessDate = url.searchParams.get("businessDate") || todayKey();
+    const businessDate = requireBusinessDate(url.searchParams.get("businessDate") || todayKey());
+    const dateFilter = filterValue(businessDate);
     const now = new Date();
     const beforeOpening = isBeforeOpening(now);
     const afterClosing = isAfterClosing(now);
@@ -122,11 +124,11 @@ module.exports = async function handler(req, res) {
 
     const [tickets, settingsRows] = await Promise.all([
       supabaseRequest(
-        `tickets?business_date=eq.${businessDate}&select=actual_number,card_number,status,admitted_at&order=actual_number.asc`,
+        `tickets?business_date=eq.${dateFilter}&select=actual_number,card_number,status,admitted_at&order=actual_number.asc`,
         { method: "GET" },
       ),
       supabaseRequest(
-        `daily_settings?business_date=eq.${businessDate}&select=bootstrap_interval_minutes`,
+        `daily_settings?business_date=eq.${dateFilter}&select=bootstrap_interval_minutes`,
         { method: "GET" },
       ),
     ]);
@@ -152,6 +154,9 @@ module.exports = async function handler(req, res) {
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    return json(res, 500, { error: error.message });
+    if (!error.statusCode || error.statusCode >= 500) console.error(error);
+    return json(res, error.statusCode || 500, {
+      error: error.statusCode && error.statusCode < 500 ? error.message : "Status is temporarily unavailable",
+    });
   }
 };

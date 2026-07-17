@@ -26,10 +26,19 @@ async function supabaseRequest(path, options = {}) {
   });
 
   const text = await response.text();
-  const body = text ? JSON.parse(text) : null;
+  let body = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = { message: text.slice(0, 500) };
+    }
+  }
   if (!response.ok) {
     const message = body?.message || body?.hint || response.statusText;
-    throw new Error(message);
+    const error = new Error(message);
+    error.statusCode = response.status >= 400 && response.status < 500 ? response.status : 502;
+    throw error;
   }
   return body;
 }

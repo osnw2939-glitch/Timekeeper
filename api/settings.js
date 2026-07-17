@@ -1,5 +1,6 @@
 const { supabaseRequest } = require("./_supabase");
 const { requireAdmin } = require("./_auth");
+const { filterValue, readJson, requireBusinessDate } = require("./_validation");
 
 function todayKey(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -18,21 +19,15 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-async function readJson(req) {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  if (chunks.length === 0) return {};
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
-}
-
 module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url, "http://localhost");
-    const businessDate = url.searchParams.get("businessDate") || todayKey();
     requireAdmin(req);
+    const businessDate = requireBusinessDate(url.searchParams.get("businessDate") || todayKey());
+    const dateFilter = filterValue(businessDate);
 
     if (req.method === "GET") {
-      const settings = await supabaseRequest(`daily_settings?business_date=eq.${businessDate}`, {
+      const settings = await supabaseRequest(`daily_settings?business_date=eq.${dateFilter}`, {
         method: "GET",
       });
       return json(res, 200, { settings: settings[0] || null });
@@ -46,32 +41,27 @@ module.exports = async function handler(req, res) {
         patch.bootstrap_interval_minutes = Number(body.initialPaceMinutes);
       }
 
-      if (patch.card_count !== undefined && (!Number.isInteger(patch.card_count) || patch.card_count < 1)) {
-        return json(res, 400, { error: "cardCount must be a positive integer" });
+      if (
+        patch.card_count !== undefined &&
+        (!Number.isInteger(patch.card_count) || patch.card_count < 1 || patch.card_count > 9999)
+      ) {
+        return json(res, 400, { error: "cardCount must be an integer between 1 and 9999" });
       }
       if (
         patch.bootstrap_interval_minutes !== undefined &&
-        (!Number.isFinite(patch.bootstrap_interval_minutes) || patch.bootstrap_interval_minutes <= 0)
+        (!Number.isFinite(patch.bootstrap_interval_minutes) ||
+          patch.bootstrap_interval_minutes < 0.1 ||
+          patch.bootstrap_interval_minutes > 20)
       ) {
-        return json(res, 400, { error: "initialPaceMinutes must be positive" });
+        return json(res, 400, { error: "initialPaceMinutes must be between 0.1 and 20" });
       }
 
-      const existing = await supabaseRequest(`daily_settings?business_date=eq.${businessDate}`, {
-        method: "GET",
-      });
-      if (existing[0]) {
-        const [settings] = await supabaseRequest(`daily_settings?business_date=eq.${businessDate}`, {
-          method: "PATCH",
-          body: JSON.stringify(patch),
-        });
-        return json(res, 200, { settings });
-      }
-
-      const [settings] = await supabaseRequest("daily_settings", {
+      const [settings] = await supabaseRequest("daily_settings?on_conflict=business_date", {
         method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
         body: JSON.stringify({ business_date: businessDate, ...patch }),
       });
-      return json(res, 201, { settings });
+      return json(res, 200, { settings });
     }
 
     return json(res, 405, { error: "Method not allowed" });

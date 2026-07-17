@@ -9,6 +9,7 @@ const BOOTSTRAP_ADMITTED_COUNT = 15;
 const DEFAULT_BOOTSTRAP_INTERVAL_MINUTES = 1;
 const STORAGE_KEY = "ticket-board-v5";
 const ADMIN_TOKEN_STORAGE_KEY = "ticket-board-admin-token";
+const PENDING_ISSUE_STORAGE_KEY = "ticket-board-pending-issue";
 
 let selectedTicketId = null;
 let usingRemoteApi = false;
@@ -91,6 +92,26 @@ function saveLocalState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function pendingIssueRequestId() {
+  try {
+    const pending = JSON.parse(localStorage.getItem(PENDING_ISSUE_STORAGE_KEY) || "null");
+    if (pending?.businessDate === state.businessDate && pending?.requestId) return pending.requestId;
+  } catch {
+    // A damaged pending value is replaced below.
+  }
+
+  const requestId = crypto.randomUUID();
+  localStorage.setItem(
+    PENDING_ISSUE_STORAGE_KEY,
+    JSON.stringify({ businessDate: state.businessDate, requestId }),
+  );
+  return requestId;
+}
+
+function clearPendingIssueRequest() {
+  localStorage.removeItem(PENDING_ISSUE_STORAGE_KEY);
+}
+
 function canUseRemoteApi() {
   return window.location.protocol !== "file:";
 }
@@ -136,7 +157,11 @@ async function apiRequest(path, options = {}, retryAuth = true) {
     throw new Error("Vercelの環境変数 ADMIN_TOKEN が未設定です。");
   }
 
-  if (!response.ok) throw new Error(body.error || "API request failed");
+  if (!response.ok) {
+    const error = new Error(body.error || "API request failed");
+    error.statusCode = response.status;
+    throw error;
+  }
   return body;
 }
 
@@ -164,6 +189,20 @@ async function syncFromApi() {
   saveLocalState();
 }
 
+async function handleOperationError(error) {
+  if (error.statusCode === 409 && usingRemoteApi) {
+    try {
+      await syncFromApi();
+      render();
+      setNotice("ほかの操作で状態が変わったため、最新の表示に更新しました。", "warning");
+      return;
+    } catch {
+      // Show the original conflict if refreshing also fails.
+    }
+  }
+  setNotice(error.message, "warning");
+}
+
 function setAdminLocked(locked, message = "") {
   adminLocked = locked;
   [
@@ -189,7 +228,7 @@ function setAdminLocked(locked, message = "") {
     elements.actionPanel.innerHTML = `
       <div class="panel-empty">
         <strong>管理画面をロック中</strong>
-        <span>${message || "管理用パスコードを確認してください。"}</span>
+        <span>${escapeHtml(message || "管理用パスコードを確認してください。")}</span>
       </div>
     `;
   }
@@ -459,12 +498,15 @@ function ticketTitle(ticket) {
 async function issueTicket() {
   if (usingRemoteApi) {
     const estimatedReturnAt = roundToFiveMinutes(estimateTailReturnDate()).toISOString();
+    const requestId = pendingIssueRequestId();
     const result = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
       method: "POST",
-      body: JSON.stringify({ action: "issue", estimatedReturnAt }),
+      body: JSON.stringify({ action: "issue", estimatedReturnAt, requestId }),
     });
+    if (!result.ticket || !result.settings) throw new Error("発券結果を確認できませんでした。もう一度お試しください。");
     const ticket = upsertTicketFromDb(result.ticket);
     applySettingsFromDb(result.settings);
+    clearPendingIssueRequest();
     state.lastIssuedId = ticket.id;
     saveLocalState();
     render();
@@ -541,6 +583,13 @@ async function markNoShow(id) {
 }
 
 async function cancelTicket(id) {
+  const currentTicket = findTicket(id);
+  if (!currentTicket || currentTicket.status === "admitted") return;
+  const confirmed = window.confirm(
+    `整理券${currentTicket.cardNumber}の呼び出しを取り消します。カードは回収済み扱いにならず、同じ営業日には再発券されません。よろしいですか？`,
+  );
+  if (!confirmed) return;
+
   if (usingRemoteApi) {
     const result = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
       method: "POST",
@@ -557,7 +606,6 @@ async function cancelTicket(id) {
   if (!ticket || ticket.status === "admitted") return;
   ticket.status = "canceled";
   ticket.canceledAt = new Date().toISOString();
-  ticket.cardRecoveredAt = ticket.cardRecoveredAt ?? new Date().toISOString();
   selectedTicketId = null;
   saveLocalState();
   render();
@@ -623,13 +671,22 @@ async function skipCardNumber() {
   render();
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function setNotice(text, level = "normal") {
   elements.lastIssuedPanel.className = `notice-card ${level}`;
   elements.lastIssuedPanel.innerHTML = `
     <div class="notice-icon">i</div>
     <div>
       <span>お知らせ</span>
-      <strong>${text}</strong>
+      <strong>${escapeHtml(text)}</strong>
     </div>
   `;
 }
@@ -798,13 +855,13 @@ function renderActionPanel() {
     button.addEventListener("click", () => {
       const action = button.dataset.panelAction;
       if (action === "admit") {
-        runOperation(button, () => admitTicket(ticket.id).catch((error) => setNotice(error.message, "warning")));
+        runOperation(button, () => admitTicket(ticket.id).catch(handleOperationError));
       }
       if (action === "noshow") {
-        runOperation(button, () => markNoShow(ticket.id).catch((error) => setNotice(error.message, "warning")));
+        runOperation(button, () => markNoShow(ticket.id).catch(handleOperationError));
       }
       if (action === "cancel") {
-        runOperation(button, () => cancelTicket(ticket.id).catch((error) => setNotice(error.message, "warning")));
+        runOperation(button, () => cancelTicket(ticket.id).catch(handleOperationError));
       }
     });
   });
@@ -889,19 +946,19 @@ async function init() {
 }
 
 elements.issueButton.addEventListener("click", () => {
-  runOperation(elements.issueButton, () => issueTicket().catch((error) => setNotice(error.message, "warning")));
+  runOperation(elements.issueButton, () => issueTicket().catch(handleOperationError));
 });
 elements.skipCardButton.addEventListener("click", () => {
-  runOperation(elements.skipCardButton, () => skipCardNumber().catch((error) => setNotice(error.message, "warning")));
+  runOperation(elements.skipCardButton, () => skipCardNumber().catch(handleOperationError));
 });
 elements.resetButton.addEventListener("click", () => elements.resetDialog.showModal());
 elements.confirmResetButton.addEventListener("click", () => {
-  runOperation(elements.confirmResetButton, () => resetDay().catch((error) => setNotice(error.message, "warning")));
+  runOperation(elements.confirmResetButton, () => resetDay().catch(handleOperationError));
 });
 elements.settingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const submitButton = elements.settingsForm.querySelector("button[type='submit']");
-  runOperation(submitButton, () => saveSettings(event).catch((error) => setNotice(error.message, "warning")));
+  runOperation(submitButton, () => saveSettings(event).catch(handleOperationError));
 });
 elements.tabButtons.forEach((button) => {
   button.addEventListener("click", () => setActiveView(button.dataset.view));
