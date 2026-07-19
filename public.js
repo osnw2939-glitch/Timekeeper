@@ -6,7 +6,6 @@ const elements = {
   currentNumber: document.querySelector("#currentNumber"),
   message: document.querySelector("#message"),
   waitingCount: document.querySelector("#waitingCount"),
-  tailWait: document.querySelector("#tailWait"),
   averagePace: document.querySelector("#averagePace"),
   updatedAt: document.querySelector("#updatedAt"),
 };
@@ -20,13 +19,6 @@ function formatUpdatedAt() {
     minute: "2-digit",
     second: "2-digit",
   }).format(new Date());
-}
-
-function formatTime(value) {
-  return new Intl.DateTimeFormat("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 function stopAutoRefresh() {
@@ -61,11 +53,6 @@ async function loadStatus() {
           ? `現在、整理券${data.currentNumber}番付近まで進んでいます。`
           : "まだご案内は始まっていません。";
     elements.waitingCount.textContent = `${data.waitingCount ?? 0}組`;
-    elements.tailWait.textContent = data.isAfterClosing
-      ? "受付終了"
-      : data.isBeforeOpening && data.tailReturnAt
-        ? `${formatTime(data.tailReturnAt)}ごろ`
-        : `約${data.tailWaitMinutes ?? 0}分`;
     elements.averagePace.textContent = `約${Number(data.averageIntervalMinutes ?? 1).toFixed(1)}分/組`;
     elements.updatedAt.textContent = data.isAfterClosing
       ? `${formatUpdatedAt()} 更新・自動更新停止`
@@ -75,7 +62,6 @@ async function loadStatus() {
     elements.currentNumber.textContent = "--";
     elements.message.textContent = "ただいま表示準備中です。店頭スタッフへご確認ください。";
     elements.waitingCount.textContent = "--";
-    elements.tailWait.textContent = "--";
     elements.averagePace.textContent = "--";
     elements.updatedAt.textContent = "接続待ち";
     scheduleNextRefresh(null, ERROR_REFRESH_INTERVAL_MS);

@@ -70,6 +70,8 @@ declare
   v_offset integer;
   v_unavailable integer[];
   v_ticket tickets%rowtype;
+  v_previous_estimated_return_at timestamptz;
+  v_estimated_return_at timestamptz;
 begin
   insert into daily_settings (business_date)
   values (p_business_date)
@@ -85,6 +87,17 @@ begin
     into v_actual_number
     from tickets
    where business_date = p_business_date;
+
+  select max(estimated_return_at)
+    into v_previous_estimated_return_at
+    from tickets
+   where business_date = p_business_date
+     and status in ('waiting', 'no_show');
+
+  v_estimated_return_at := p_estimated_return_at;
+  if v_estimated_return_at is not null and v_previous_estimated_return_at is not null then
+    v_estimated_return_at := greatest(v_estimated_return_at, v_previous_estimated_return_at);
+  end if;
 
   select coalesce(array_agg(card_number), '{}')
     into v_unavailable
@@ -117,7 +130,7 @@ begin
     v_actual_number,
     v_card_number,
     'waiting',
-    p_estimated_return_at
+    v_estimated_return_at
   )
   returning * into v_ticket;
 
@@ -155,6 +168,8 @@ declare
   v_offset integer;
   v_unavailable integer[];
   v_ticket tickets%rowtype;
+  v_previous_estimated_return_at timestamptz;
+  v_estimated_return_at timestamptz;
 begin
   if p_ticket_id is null then
     raise exception 'A ticket ID is required';
@@ -190,6 +205,17 @@ begin
     from tickets
    where business_date = p_business_date;
 
+  select max(estimated_return_at)
+    into v_previous_estimated_return_at
+    from tickets
+   where business_date = p_business_date
+     and status in ('waiting', 'no_show');
+
+  v_estimated_return_at := p_estimated_return_at;
+  if v_estimated_return_at is not null and v_previous_estimated_return_at is not null then
+    v_estimated_return_at := greatest(v_estimated_return_at, v_previous_estimated_return_at);
+  end if;
+
   select coalesce(array_agg(card_number), '{}')
     into v_unavailable
     from tickets
@@ -223,7 +249,7 @@ begin
     v_actual_number,
     v_card_number,
     'waiting',
-    p_estimated_return_at
+    v_estimated_return_at
   )
   returning * into v_ticket;
 

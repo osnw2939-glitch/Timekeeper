@@ -99,6 +99,15 @@ function estimateTailReturnDate(tickets, settings, now = new Date()) {
   return addMinutes(now, position * averageIntervalMinutes(tickets, settings));
 }
 
+function currentProgressTicket(tickets) {
+  return tickets
+    .filter((ticket) => ["admitted", "no_show"].includes(ticket.status))
+    .reduce((latest, ticket) => {
+      if (!latest) return ticket;
+      return Number(ticket.actual_number) > Number(latest.actual_number) ? ticket : latest;
+    }, null);
+}
+
 module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url, "http://localhost");
@@ -133,18 +142,15 @@ module.exports = async function handler(req, res) {
       ),
     ]);
     const [settings] = settingsRows;
-    const admitted = tickets.filter((ticket) => ticket.status === "admitted");
     const waiting = tickets.filter((ticket) => ticket.status === "waiting");
-    const latestAdmitted = admitted
-      .filter((ticket) => ticket.admitted_at)
-      .sort((a, b) => new Date(b.admitted_at) - new Date(a.admitted_at))[0];
+    const currentProgress = currentProgressTicket(tickets);
     const average = averageIntervalMinutes(tickets, settings);
     const tailReturnAt = estimateTailReturnDate(tickets, settings);
     const tailWaitMinutes = Math.max(0, Math.ceil((tailReturnAt.getTime() - Date.now()) / 60000));
 
     return json(res, 200, {
       businessDate,
-      currentNumber: beforeOpening || afterClosing ? null : latestAdmitted?.card_number || null,
+      currentNumber: beforeOpening || afterClosing ? null : currentProgress?.card_number || null,
       isBeforeOpening: beforeOpening,
       isAfterClosing: afterClosing,
       waitingCount: waiting.length,
@@ -160,3 +166,5 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+
+module.exports.currentProgressTicket = currentProgressTicket;

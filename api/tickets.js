@@ -97,6 +97,21 @@ async function updateTicket(id, businessDate, allowedStatuses, patch) {
   return ticket;
 }
 
+async function ensureNoShowTimeReached(id, businessDate, now = new Date()) {
+  const [ticket] = await supabaseRequest(
+    `tickets?id=eq.${filterValue(id)}&business_date=eq.${filterValue(businessDate)}&select=status,estimated_return_at`,
+    { method: "GET" },
+  );
+  if (!ticket || ticket.status !== "waiting") {
+    throw httpError(409, "This ticket was already changed. Refresh and try again.");
+  }
+
+  const promisedAt = ticket.estimated_return_at ? new Date(ticket.estimated_return_at) : null;
+  if (promisedAt && !Number.isNaN(promisedAt.getTime()) && promisedAt > now) {
+    throw httpError(422, "案内した時刻までは不在にできません。");
+  }
+}
+
 async function resetBusinessDate(businessDate) {
   const closedAt = new Date().toISOString();
   await supabaseRequest(
@@ -156,6 +171,7 @@ module.exports = async function handler(req, res) {
       }
       if (body.action === "no_show") {
         const id = requireUuid(body.id);
+        await ensureNoShowTimeReached(id, businessDate);
         return json(res, 200, {
           ticket: await updateTicket(id, businessDate, ["waiting"], {
             status: "no_show",

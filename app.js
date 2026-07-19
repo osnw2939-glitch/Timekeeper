@@ -464,8 +464,29 @@ function estimateTailReturnDate() {
   return estimateReturnDateForTicket(tailTicket());
 }
 
+function promisedReturnDate(ticket) {
+  if (!ticket?.estimatedReturnAt) return null;
+  const promised = new Date(ticket.estimatedReturnAt);
+  return Number.isNaN(promised.getTime()) ? null : promised;
+}
+
+function latestPromisedReturnDate() {
+  return state.tickets
+    .filter((ticket) => ["waiting", "no_show"].includes(ticket.status))
+    .reduce((latest, ticket) => {
+      const promised = promisedReturnDate(ticket);
+      return promised && (!latest || promised > latest) ? promised : latest;
+    }, null);
+}
+
+function estimateNextIssueReturnDate() {
+  const estimated = roundToFiveMinutes(estimateTailReturnDate());
+  const previous = latestPromisedReturnDate();
+  return previous && previous > estimated ? new Date(previous) : estimated;
+}
+
 function estimateTailMinutes() {
-  const minutes = (estimateTailReturnDate().getTime() - Date.now()) / 60000;
+  const minutes = (estimateNextIssueReturnDate().getTime() - Date.now()) / 60000;
   return Math.max(0, Math.ceil(minutes));
 }
 
@@ -488,7 +509,7 @@ function formatTime(value) {
 }
 
 function returnTimeLabelForTicket(ticket) {
-  return formatTime(roundToFiveMinutes(estimateReturnDateForTicket(ticket)));
+  return formatTime(promisedReturnDate(ticket) || roundToFiveMinutes(estimateReturnDateForTicket(ticket)));
 }
 
 function ticketTitle(ticket) {
@@ -497,7 +518,7 @@ function ticketTitle(ticket) {
 
 async function issueTicket() {
   if (usingRemoteApi) {
-    const estimatedReturnAt = roundToFiveMinutes(estimateTailReturnDate()).toISOString();
+    const estimatedReturnAt = estimateNextIssueReturnDate().toISOString();
     const requestId = pendingIssueRequestId();
     const result = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
       method: "POST",
@@ -527,7 +548,7 @@ async function issueTicket() {
     status: "waiting",
     issuedAt: new Date().toISOString(),
   };
-  ticket.estimatedReturnAt = roundToFiveMinutes(estimateReturnDateForTicket(ticket)).toISOString();
+  ticket.estimatedReturnAt = estimateNextIssueReturnDate().toISOString();
 
   state.tickets.push(ticket);
   state.nextActualNumber += 1;
@@ -561,6 +582,17 @@ async function admitTicket(id) {
 }
 
 async function markNoShow(id) {
+  const currentTicket = findTicket(id);
+  if (!currentTicket || currentTicket.status !== "waiting") return;
+  const promised = promisedReturnDate(currentTicket);
+  if (promised && promised > new Date()) {
+    setNotice(
+      `整理券${currentTicket.cardNumber}には${formatTime(promised)}ごろと案内しています。その時刻までは不在にできません。`,
+      "warning",
+    );
+    return;
+  }
+
   if (usingRemoteApi) {
     const result = await apiRequest(`/api/tickets?businessDate=${state.businessDate}`, {
       method: "POST",
@@ -702,7 +734,7 @@ function render() {
 function renderSummary() {
   const nextCard = peekNextCardNumber();
   const tailMinutes = estimateTailMinutes();
-  const tailReturn = roundToFiveMinutes(estimateTailReturnDate());
+  const tailReturn = estimateNextIssueReturnDate();
   const noShows = ticketsByStatus("no_show");
   const waiting = ticketsByStatus("waiting");
   const average = averageIntervalMinutes();
@@ -712,12 +744,12 @@ function renderSummary() {
   }).format(new Date());
   if (elements.nextActualLabel) elements.nextActualLabel.textContent = state.nextActualNumber;
   elements.nextCardLabel.textContent = nextCard ?? "--";
-  elements.tailWaitLabel.textContent = isAfterClosing()
-    ? "受付終了"
+  elements.tailWaitLabel.textContent = isAfterClosing() ? "受付終了" : `${formatTime(tailReturn)}ごろ`;
+  elements.tailReturnLabel.textContent = isAfterClosing()
+    ? "本日の発券は終了"
     : isBeforeOpening()
-      ? "開店後にご案内"
-      : `約${tailMinutes}分`;
-  elements.tailReturnLabel.textContent = `${formatTime(tailReturn)}ごろ`;
+      ? `開店後・整理券${nextCard ?? "--"}へ案内予定`
+      : `あと約${tailMinutes}分・整理券${nextCard ?? "--"}へ案内予定`;
   elements.noShowCountLabel.textContent = `${noShows.length}件`;
   elements.waitingCountLabel.textContent = `${waiting.length}組`;
   elements.averageIntervalLabel.textContent =
@@ -820,6 +852,8 @@ function renderActionPanel() {
   }
 
   const isNoShow = ticket.status === "no_show";
+  const promised = promisedReturnDate(ticket);
+  const beforePromisedReturn = !isNoShow && promised && promised > new Date();
   elements.actionPanel.innerHTML = `
     <div class="panel-head">
       <span>選択中：整理券${ticket.cardNumber}</span>
@@ -838,7 +872,7 @@ function renderActionPanel() {
           : `<button class="panel-action" data-panel-action="noshow" type="button">
               <span class="panel-action-icon">?</span>
               <strong>不在にする</strong>
-              <small>不在者タブへ移動</small>
+              <small>${beforePromisedReturn ? `${formatTime(promised)}までは不在にできません` : "不在者タブへ移動"}</small>
             </button>`
       }
     </div>

@@ -158,3 +158,32 @@ test("issuance uses the request UUID and falls back while the new RPC is not ins
     },
   );
 });
+
+test("a ticket cannot be marked absent before its promised return time", async () => {
+  let patchCalled = false;
+  await withTicketsHandler(
+    {
+      supabaseRequest: async (_path, options) => {
+        if (options.method === "GET") {
+          return [{ status: "waiting", estimated_return_at: "2999-06-02T12:30:00+09:00" }];
+        }
+        patchCalled = true;
+        return [];
+      },
+      supabaseRpc: async () => ({}),
+    },
+    async (handler) => {
+      const res = response();
+      await handler(
+        request("POST", `/api/tickets?businessDate=${BUSINESS_DATE}`, {
+          action: "no_show",
+          id: TICKET_ID,
+        }),
+        res,
+      );
+      assert.equal(res.statusCode, 422);
+      assert.equal(res.body.error, "案内した時刻までは不在にできません。");
+      assert.equal(patchCalled, false);
+    },
+  );
+});
