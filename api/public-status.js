@@ -24,7 +24,7 @@ function todayKey(date = new Date()) {
 function json(res, status, body) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
-  res.setHeader("Cache-Control", "public, max-age=0, s-maxage=120, stale-while-revalidate=300");
+  res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
   res.end(JSON.stringify(body));
 }
 
@@ -108,6 +108,85 @@ function currentProgressTicket(tickets) {
     }, null);
 }
 
+function validDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function ticketStatusesByCard(tickets, settings, now = new Date()) {
+  const sortedTickets = [...tickets].sort(
+    (a, b) => Number(a.actual_number) - Number(b.actual_number),
+  );
+  const activeTickets = sortedTickets.filter((ticket) =>
+    ["waiting", "no_show"].includes(ticket.status),
+  );
+  const waitingTickets = activeTickets.filter((ticket) => ticket.status === "waiting");
+  const queueTickets = sortedTickets.filter((ticket) => ticket.status !== "canceled");
+  const openingBatch = queueTickets.slice(0, OPENING_BATCH_SIZE);
+  const openingBatchEnd = openingBatch.at(-1)?.actual_number ?? null;
+  const progress = currentProgressTicket(sortedTickets);
+  const progressNumber = progress ? Number(progress.actual_number) : null;
+  const average = averageIntervalMinutes(sortedTickets, settings);
+  const opening = openDate(now);
+  const beforeOpening = now < opening;
+
+  function openingReadyAt(actualNumber) {
+    if (openingBatchEnd === null || actualNumber <= Number(openingBatchEnd)) return opening;
+    const postOpeningPosition = waitingTickets.filter(
+      (candidate) =>
+        Number(candidate.actual_number) > Number(openingBatchEnd) &&
+        Number(candidate.actual_number) <= actualNumber,
+    ).length;
+    return addMinutes(
+      opening,
+      FIRST_AFTER_OPEN_WAIT_MINUTES +
+        Math.max(0, postOpeningPosition - 1) * bootstrapIntervalMinutes(settings),
+    );
+  }
+
+  return Object.fromEntries(
+    activeTickets.map((ticket) => {
+      const actualNumber = Number(ticket.actual_number);
+      const promisedAt = validDate(ticket.estimated_return_at);
+      let estimatedReadyAt = null;
+
+      if (ticket.status === "waiting") {
+        if (beforeOpening) {
+          estimatedReadyAt = promisedAt || openingReadyAt(actualNumber);
+        } else if (progressNumber !== null && actualNumber <= progressNumber) {
+          estimatedReadyAt = now;
+        } else if (
+          openingBatchEnd !== null &&
+          (progressNumber === null || progressNumber < Number(openingBatchEnd))
+        ) {
+          if (actualNumber <= Number(openingBatchEnd)) {
+            estimatedReadyAt = now;
+          } else {
+            estimatedReadyAt = openingReadyAt(actualNumber);
+          }
+        } else {
+          const groupsUntilReady = waitingTickets.filter(
+            (candidate) =>
+              Number(candidate.actual_number) > (progressNumber ?? 0) &&
+              Number(candidate.actual_number) <= actualNumber,
+          ).length;
+          estimatedReadyAt = addMinutes(now, groupsUntilReady * average);
+        }
+      }
+
+      return [
+        String(ticket.card_number),
+        {
+          status: ticket.status,
+          promisedReturnAt: promisedAt?.toISOString() || null,
+          estimatedReadyAt: estimatedReadyAt?.toISOString() || null,
+        },
+      ];
+    }),
+  );
+}
+
 module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url, "http://localhost");
@@ -127,13 +206,15 @@ module.exports = async function handler(req, res) {
         tailWaitMinutes: 0,
         tailReturnAt: closeDate(now).toISOString(),
         averageIntervalMinutes: BOOTSTRAP_INTERVAL_MINUTES,
+        ticketsByCard: {},
+        serverTime: now.toISOString(),
         updatedAt: now.toISOString(),
       });
     }
 
     const [tickets, settingsRows] = await Promise.all([
       supabaseRequest(
-        `tickets?business_date=eq.${dateFilter}&select=actual_number,card_number,status,admitted_at&order=actual_number.asc`,
+        `tickets?business_date=eq.${dateFilter}&select=actual_number,card_number,status,estimated_return_at,admitted_at&order=actual_number.asc`,
         { method: "GET" },
       ),
       supabaseRequest(
@@ -147,6 +228,7 @@ module.exports = async function handler(req, res) {
     const average = averageIntervalMinutes(tickets, settings);
     const tailReturnAt = estimateTailReturnDate(tickets, settings);
     const tailWaitMinutes = Math.max(0, Math.ceil((tailReturnAt.getTime() - Date.now()) / 60000));
+    const updatedAt = new Date();
 
     return json(res, 200, {
       businessDate,
@@ -157,7 +239,9 @@ module.exports = async function handler(req, res) {
       tailWaitMinutes,
       tailReturnAt: tailReturnAt.toISOString(),
       averageIntervalMinutes: average,
-      updatedAt: new Date().toISOString(),
+      ticketsByCard: ticketStatusesByCard(tickets, settings, updatedAt),
+      serverTime: updatedAt.toISOString(),
+      updatedAt: updatedAt.toISOString(),
     });
   } catch (error) {
     if (!error.statusCode || error.statusCode >= 500) console.error(error);
@@ -168,3 +252,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.currentProgressTicket = currentProgressTicket;
+module.exports.ticketStatusesByCard = ticketStatusesByCard;

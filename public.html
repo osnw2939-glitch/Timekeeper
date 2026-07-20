@@ -4,13 +4,33 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>整理券 進行状況</title>
-    <link rel="stylesheet" href="./public.css" />
+    <link rel="stylesheet" href="./public.css?v=20260720-personal-countdown" />
   </head>
   <body>
     <main class="public-page">
       <header class="public-header">
         <img src="./assets/kobe-shokuniku-logo.png" alt="神戸食肉卸売市場" />
       </header>
+
+      <section class="personal-status" id="personalStatus" hidden>
+        <div class="personal-heading">
+          <span>お持ちの整理券</span>
+          <strong><b id="personalCardNumber">--</b>番</strong>
+        </div>
+        <div class="personal-times">
+          <div>
+            <span>お伝えしたお戻り時刻</span>
+            <strong id="promisedReturnTime">--</strong>
+            <small>この時刻は発券時から変わりません</small>
+          </div>
+          <div class="live-estimate">
+            <span>現在の進行状況</span>
+            <strong id="remainingEstimate">確認中</strong>
+            <small>5分単位の目安です</small>
+          </div>
+        </div>
+        <p id="personalMessage">現在の状況を確認しています。</p>
+      </section>
 
       <section class="hero">
         <span>現在ご案内中の整理券番号</span>
@@ -35,6 +55,7 @@
       </section>
     </main>
 
-    <script src="./public.js?v=20260720-stable-progress"></script>
+    <script src="./public-status-logic.js?v=20260720-personal-countdown"></script>
+    <script src="./public.js?v=20260720-personal-countdown"></script>
   </body>
 </html>

@@ -43,6 +43,80 @@ body {
   max-width: min(720px, 100%);
 }
 
+.personal-status {
+  background: var(--panel);
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 28px;
+}
+
+.personal-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.personal-heading > span,
+.personal-times span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.personal-heading > strong {
+  color: var(--green);
+  font-size: 24px;
+}
+
+.personal-heading b {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.personal-times {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 20px;
+  padding-top: 20px;
+}
+
+.personal-times > div {
+  padding-right: 24px;
+}
+
+.personal-times > div + div {
+  border-left: 1px solid var(--line);
+  padding-left: 24px;
+  padding-right: 0;
+}
+
+.personal-times strong {
+  display: block;
+  font-size: 34px;
+  margin-top: 6px;
+}
+
+.personal-times small {
+  color: var(--muted);
+  display: block;
+  margin-top: 4px;
+}
+
+.live-estimate strong {
+  color: var(--green);
+}
+
+.personal-status > p {
+  border-top: 1px solid var(--line);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.7;
+  margin: 20px 0 0;
+  padding-top: 18px;
+}
+
 .hero {
   align-items: center;
   background: var(--panel);
@@ -105,6 +179,30 @@ body {
 }
 
 @media (max-width: 640px) {
+  .public-page {
+    padding-top: 20px;
+  }
+
+  .personal-status {
+    padding: 22px 18px;
+  }
+
+  .personal-times {
+    grid-template-columns: 1fr;
+  }
+
+  .personal-times > div {
+    padding-right: 0;
+  }
+
+  .personal-times > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    margin-top: 18px;
+    padding-left: 0;
+    padding-top: 18px;
+  }
+
   .status-grid {
     grid-template-columns: 1fr;
   }
